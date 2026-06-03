@@ -59,7 +59,13 @@ async function upsertFromUrl(url: string, enableAmazon: boolean): Promise<string
     },
   });
 
-  const productId = await resolveProduct(extracted);
+  // If this exact offer (vendor + url) already exists, keep its product so we
+  // refresh in place instead of creating a duplicate product with no offers.
+  const existingOffer = await prisma.offer.findUnique({
+    where: { vendorId_url: { vendorId: vendor.id, url } },
+  });
+  const productId = existingOffer ? existingOffer.productId : await resolveProduct(extracted);
+
   await recordOffer(productId, vendor.id, url, extracted);
   return productId;
 }

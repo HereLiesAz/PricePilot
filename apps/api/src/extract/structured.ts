@@ -94,7 +94,12 @@ function extractJsonLd($: cheerio.CheerioAPI): Candidate | null {
   };
 }
 
-/** Flatten JSON-LD graphs/arrays into a flat list of object nodes. */
+/**
+ * Flatten JSON-LD into a list of object nodes, recursing through arrays, the
+ * `@graph` container, and nested properties (e.g. a Product under a WebPage's
+ * `mainEntity`). Outer nodes are pushed before their children so a top-level
+ * Product is still preferred by `find`.
+ */
 function collectNodes(value: unknown, out: unknown[]): void {
   if (Array.isArray(value)) {
     for (const v of value) collectNodes(v, out);
@@ -103,7 +108,10 @@ function collectNodes(value: unknown, out: unknown[]): void {
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
     out.push(obj);
-    if (Array.isArray(obj["@graph"])) collectNodes(obj["@graph"], out);
+    for (const key of Object.keys(obj)) {
+      const child = obj[key];
+      if (child && typeof child === "object") collectNodes(child, out);
+    }
   }
 }
 
@@ -169,12 +177,24 @@ function firstString(...values: unknown[]): string | null {
 
 function toNumber(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string") {
-    const cleaned = v.replace(/[^0-9.,-]/g, "").replace(/,(?=\d{3}\b)/g, "");
-    const n = Number.parseFloat(cleaned.replace(",", "."));
-    return Number.isFinite(n) ? n : null;
+  if (typeof v !== "string") return null;
+
+  let cleaned = v.replace(/[^0-9.,-]/g, "");
+  const hasPeriod = cleaned.includes(".");
+  const hasComma = cleaned.includes(",");
+  if (hasPeriod && hasComma) {
+    // Whichever separator comes last is the decimal point; the other groups
+    // thousands. Handles both "1,299.00" (US) and "1.299,00" (EU).
+    if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      cleaned = cleaned.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    cleaned = cleaned.replace(",", ".");
   }
-  return null;
+  const n = Number.parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
 }
 
 function brandName(v: unknown): string | null {

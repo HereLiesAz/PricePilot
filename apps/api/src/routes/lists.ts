@@ -61,7 +61,10 @@ export function registerListRoutes(
   app.get(
     "/api/lists/:id",
     { schema: { params: IdParam, response: { 200: ListDetailDTO } } },
-    async (req) => requireList(req.params.id),
+    async (req) => {
+      await ensureListExists(req.params.id);
+      return requireList(req.params.id);
+    },
   );
 
   app.patch(
@@ -96,6 +99,7 @@ export function registerListRoutes(
     "/api/lists/:id/items/:itemId",
     { schema: { params: ItemParams } },
     async (req, reply) => {
+      await ensureListExists(req.params.id);
       const item = await prisma.listItem.findFirst({
         where: { id: req.params.itemId, listId: req.params.id },
       });

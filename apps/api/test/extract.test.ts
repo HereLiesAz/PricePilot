@@ -63,6 +63,30 @@ describe("extractFromHtml (structured data)", () => {
     expect(result?.image).toBe("https://img/og.png");
   });
 
+  it("parses EU-formatted prices (1.299,00)", () => {
+    const html = `<html><head>
+      <meta property="og:title" content="Euro Widget" />
+      <meta property="product:price:amount" content="1.299,00" />
+      <meta property="product:price:currency" content="EUR" />
+      </head></html>`;
+    expect(extractFromHtml(html)?.price).toBe(1299);
+  });
+
+  it("finds a Product nested under another node (mainEntity)", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "WebPage",
+      name: "Listing",
+      mainEntity: {
+        "@type": "Product",
+        name: "Nested Gadget",
+        offers: { "@type": "Offer", price: 42, priceCurrency: "USD" },
+      },
+    })}</script>`;
+    const result = extractFromHtml(html);
+    expect(result?.title).toBe("Nested Gadget");
+    expect(result?.price).toBe(42);
+  });
+
   it("returns null when no product signal exists", () => {
     expect(extractFromHtml("<html><head><title>Blog</title></head></html>")).toBeNull();
   });
