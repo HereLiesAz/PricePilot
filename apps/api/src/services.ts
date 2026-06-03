@@ -1,6 +1,21 @@
 import type { AddItemInput, ExtractedProduct } from "@pricepilot/shared";
 import { extractOffer, vendorDomain, type AdapterContext } from "@pricepilot/scrapers";
+import {
+  findProductMatch,
+  makeClaudeMatcher,
+  STRONG_MATCH,
+  WEAK_MATCH,
+  type ClaudeMatcher,
+} from "@pricepilot/intel";
 import { prisma } from "./db.js";
+
+// Optional Claude match tie-breaker, enabled when an API key is configured.
+const claudeMatcher: ClaudeMatcher | null = process.env.ANTHROPIC_API_KEY
+  ? makeClaudeMatcher({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      model: process.env.ANTHROPIC_MODEL,
+    })
+  : null;
 
 /**
  * Resolve an add-item input into a Product (and, when a URL is given, a Vendor
@@ -74,12 +89,32 @@ async function upsertFromUrl(url: string, ctx: AdapterContext): Promise<string> 
 }
 
 async function resolveProduct(extracted: ExtractedProduct): Promise<string> {
-  if (extracted.gtin) {
-    const existing = await prisma.product.findFirst({
-      where: { gtin: extracted.gtin },
-    });
-    if (existing) return existing.id;
+  // Candidate pool: products sharing a GTIN/MPN, else a bounded recent set for
+  // fuzzy title matching (cross-vendor grouping — see PLAN.md).
+  const idWhere: { gtin?: string; mpn?: string }[] = [];
+  if (extracted.gtin) idWhere.push({ gtin: extracted.gtin });
+  if (extracted.mpn) idWhere.push({ mpn: extracted.mpn });
+  const pool = idWhere.length
+    ? await prisma.product.findMany({ where: { OR: idWhere }, take: 200 })
+    : await prisma.product.findMany({ take: 200, orderBy: { createdAt: "desc" } });
+
+  const match = findProductMatch(
+    { title: extracted.title, gtin: extracted.gtin, mpn: extracted.mpn },
+    pool.map((p) => ({ id: p.id, normalizedTitle: p.normalizedTitle, gtin: p.gtin, mpn: p.mpn })),
+  );
+  if (match) {
+    // Exact identifier or strong title match wins outright.
+    if (match.by !== "title" || match.score >= STRONG_MATCH) return match.productId;
+    // Ambiguous fuzzy band → Claude tie-break when available.
+    if (claudeMatcher && match.score >= WEAK_MATCH) {
+      const chosen = await claudeMatcher(
+        { title: extracted.title, brand: extracted.brand, gtin: extracted.gtin },
+        pool.map((p) => ({ id: p.id, title: p.normalizedTitle })),
+      );
+      if (chosen) return chosen;
+    }
   }
+
   const product = await prisma.product.create({
     data: {
       normalizedTitle: extracted.title.trim(),

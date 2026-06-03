@@ -143,6 +143,17 @@ export type PriceHistoryPointDTO = z.infer<typeof PriceHistoryPointDTO>;
  * Offer price history plus a small summary used by the web history chart and
  * (later) deal scoring: lowest / median / latest over the recorded window.
  */
+export const DealTier = z.enum(["great", "good", "normal", "high"]);
+export type DealTier = z.infer<typeof DealTier>;
+
+export const DealScoreDTO = z.object({
+  tier: DealTier,
+  percentile: z.number().int().min(0).max(100),
+  lowest: Money.nullable(),
+  median: Money.nullable(),
+});
+export type DealScoreDTO = z.infer<typeof DealScoreDTO>;
+
 export const PriceHistoryDTO = z.object({
   offerId: z.string(),
   currency: z.string(),
@@ -150,6 +161,8 @@ export const PriceHistoryDTO = z.object({
   lowest: Money.nullable(),
   median: Money.nullable(),
   latest: Money.nullable(),
+  /** Deal score of the latest price against this offer's own history. */
+  deal: DealScoreDTO,
 });
 export type PriceHistoryDTO = z.infer<typeof PriceHistoryDTO>;
 
@@ -200,6 +213,20 @@ export const PushPayload = z.object({
   rule: AlertRule.optional(),
 });
 export type PushPayload = z.infer<typeof PushPayload>;
+
+// --- Name search ---------------------------------------------------------
+
+/** A candidate product returned by the name-search finder (API vendors). */
+export const SearchResultDTO = z.object({
+  title: z.string(),
+  price: Money.nullable(),
+  currency: z.string(),
+  image: z.string().nullable(),
+  url: z.string().url(),
+  vendor: z.string(),
+  gtin: z.string().nullable(),
+});
+export type SearchResultDTO = z.infer<typeof SearchResultDTO>;
 
 // --- Extraction ----------------------------------------------------------
 

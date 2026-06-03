@@ -7,6 +7,7 @@ import {
   ListSummaryDTO,
   OfferDTO,
   PriceHistoryDTO,
+  SearchResultDTO,
   VapidKeyDTO,
   type AddItemInput,
   type CreateAlertInput,
@@ -132,4 +133,7 @@ export const listsApi = {
 
   deleteAlert: (alertId: string) =>
     requestVoid(`/api/alerts/${alertId}`, { method: "DELETE" }),
+
+  search: (query: string, signal?: AbortSignal) =>
+    request(`/api/search?q=${encodeURIComponent(query)}`, z.array(SearchResultDTO), { signal }),
 };

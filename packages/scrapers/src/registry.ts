@@ -5,6 +5,7 @@ import { ebayAdapter } from "./adapters/ebay.js";
 import { bestBuyAdapter } from "./adapters/bestbuy.js";
 import { structuredDataAdapter } from "./adapters/structured-data.js";
 import { playwrightAdapter } from "./adapters/playwright.js";
+import { claudeAdapter } from "./adapters/claude.js";
 
 /**
  * API-tier adapters are tried first (cleanest + ToS-safe). The structured-data
@@ -12,7 +13,13 @@ import { playwrightAdapter } from "./adapters/playwright.js";
  * invoked only when structured data is missing and Playwright is enabled.
  */
 export const apiAdapters: VendorAdapter[] = [ebayAdapter, bestBuyAdapter];
-export const allAdapters: VendorAdapter[] = [...apiAdapters, structuredDataAdapter, playwrightAdapter];
+/** Fallback tiers tried (in order) when the primary adapter finds no data. */
+export const fallbackAdapters: VendorAdapter[] = [playwrightAdapter, claudeAdapter];
+export const allAdapters: VendorAdapter[] = [
+  ...apiAdapters,
+  structuredDataAdapter,
+  ...fallbackAdapters,
+];
 
 function isAmazon(domain: string): boolean {
   return /(^|\.)amazon\./.test(domain);
@@ -46,13 +53,20 @@ export async function extractOffer(url: string, ctx: AdapterContext): Promise<Ex
   try {
     return await primary.extract(url, ctx);
   } catch (err) {
-    // Anti-bot blocks often surface as fetch_failed on plain HTTP; a headless
-    // render can get past them, so fall back on that too (not just missing data).
+    // Anti-bot blocks often surface as fetch_failed on plain HTTP; the headless
+    // and Claude tiers can recover those too (not just missing data).
     const shouldFallback =
       err instanceof ExtractionError &&
       (err.code === "no_product_data" || err.code === "fetch_failed");
-    if (shouldFallback && primary.tier !== "headless" && playwrightAdapter.isAvailable(ctx)) {
-      return playwrightAdapter.extract(url, ctx);
+    if (!shouldFallback) throw err;
+
+    for (const fb of fallbackAdapters) {
+      if (fb.tier === primary.tier || !fb.isAvailable(ctx)) continue;
+      try {
+        return await fb.extract(url, ctx);
+      } catch {
+        // Try the next fallback tier; surface the original error if all fail.
+      }
     }
     throw err;
   }

@@ -5,13 +5,13 @@ many vendors and maintain the best-possible price via server-side fetching and a
 intelligence layer. See [`PLAN.md`](./PLAN.md) for the full product plan and
 roadmap.
 
-> **Status: Phase 3 — Watcher.** On top of the Phase 2 adapters, a new
-> `apps/worker` (BullMQ + Redis) scrapes tracked offers on an **adaptive
-> schedule** (checks near-target / volatile offers more often; backs off stable
-> ones and on repeated failures), records price history, and fires **Web Push**
-> price alerts (target-hit / good-deal / back-in-stock). Cross-vendor matching,
-> the Claude intelligence layer, and auth arrive in later phases — see
-> [`PLAN.md`](./PLAN.md).
+> **Status: Phase 4 — Intelligence.** Adds `packages/intel`: **cross-vendor
+> matching** (exact GTIN/MPN → fuzzy title → optional Claude tie-break), a
+> **Claude extraction fallback** (tier 4, when structured-data and the headless
+> tier fail), **deal scoring** (current price vs. the offer's own history
+> distribution), and a **name-search finder** over API-friendly vendors. The
+> web app shows a deal badge and a Find page. Wishlist importers, normalization,
+> opt-in Amazon, and deploy land in Phase 5 — see [`PLAN.md`](./PLAN.md).
 
 ## Why a backend exists
 
@@ -33,11 +33,13 @@ packages/
   shared/     zod schemas + DTOs + shared TS types  (@pricepilot/shared)
   db/         Prisma schema + migrations + client    (@pricepilot/db, Postgres)
   scrapers/   tiered vendor-adapter interface + adapters  (@pricepilot/scrapers)
+  intel/      matching, deal scoring, Claude extraction/match  (@pricepilot/intel)
 infra/        docker-compose (Postgres + Redis)
 ```
 
-Later phases add `packages/intel` (cross-vendor matching, normalization, Claude
-extraction/scoring).
+`packages/intel` holds the pure heuristics (title normalization + Sørensen–Dice
+matching, deal scoring) plus the Claude-backed extraction fallback and match
+tie-break (prompt-cached, structured tool output; gated on `ANTHROPIC_API_KEY`).
 
 ### Watcher (`apps/worker`)
 
@@ -119,6 +121,13 @@ The PWA talks only to our own API; all vendor fetching is server-side.
 | `POST /api/push/subscribe`             | Register a Web Push subscription                    |
 | `GET·POST /api/lists/:id/items/:itemId/alerts` | List / create price alerts for an item     |
 | `DELETE /api/alerts/:alertId`          | Delete an alert                                     |
+| `GET /api/search?q=`                   | Name-search candidates from API-friendly vendors    |
+
+The price-history response includes a **deal score** (great / good / normal /
+above-typical + percentile). Add-by-URL escalates through the adapter tiers and,
+when `ANTHROPIC_API_KEY` is set, falls back to **Claude extraction** for pages
+the cheaper tiers can't parse; cross-vendor product grouping uses GTIN/MPN then
+fuzzy title, with a Claude tie-break for ambiguous matches.
 
 Add-by-URL runs through the tiered adapters in `packages/scrapers` (official API
 → structured data → headless). Amazon URLs are rejected unless

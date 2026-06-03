@@ -10,5 +10,5 @@ export default defineConfig({
   // external: it compiles to CJS and loads the Prisma client at runtime —
   // bundling Prisma breaks its query-engine resolution. Third-party deps
   // (cheerio, playwright-core) stay external too.
-  noExternal: ["@pricepilot/shared", "@pricepilot/scrapers"],
+  noExternal: ["@pricepilot/shared", "@pricepilot/scrapers", "@pricepilot/intel"],
 });

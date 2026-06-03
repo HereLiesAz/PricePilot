@@ -117,3 +117,11 @@ export function useDeleteAlert(listId: string, itemId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: alertsKey(listId, itemId) }),
   });
 }
+
+export function useSearch(query: string) {
+  return useQuery({
+    queryKey: ["search", query],
+    queryFn: ({ signal }) => listsApi.search(query, signal),
+    enabled: query.trim().length > 0,
+  });
+}
