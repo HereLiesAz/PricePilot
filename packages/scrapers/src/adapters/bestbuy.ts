@@ -44,6 +44,9 @@ export const bestBuyAdapter: VendorAdapter = {
   canHandle: (url) => /(^|\.)bestbuy\.com$/i.test(url.hostname),
   isAvailable: (ctx) => Boolean(ctx.credentials.bestBuyApiKey),
   async extract(url: string, ctx: AdapterContext): Promise<ExtractedProduct> {
+    if (!ctx.credentials.bestBuyApiKey) {
+      throw new ExtractionError("Best Buy API key is missing", "adapter_unavailable");
+    }
     const sku = bestBuySku(new URL(url));
     if (!sku) {
       throw new ExtractionError(`Could not find a Best Buy SKU in ${url}`, "bad_url");

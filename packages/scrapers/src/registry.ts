@@ -46,8 +46,12 @@ export async function extractOffer(url: string, ctx: AdapterContext): Promise<Ex
   try {
     return await primary.extract(url, ctx);
   } catch (err) {
-    const noData = err instanceof ExtractionError && err.code === "no_product_data";
-    if (noData && primary.tier !== "headless" && playwrightAdapter.isAvailable(ctx)) {
+    // Anti-bot blocks often surface as fetch_failed on plain HTTP; a headless
+    // render can get past them, so fall back on that too (not just missing data).
+    const shouldFallback =
+      err instanceof ExtractionError &&
+      (err.code === "no_product_data" || err.code === "fetch_failed");
+    if (shouldFallback && primary.tier !== "headless" && playwrightAdapter.isAvailable(ctx)) {
       return playwrightAdapter.extract(url, ctx);
     }
     throw err;

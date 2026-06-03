@@ -45,18 +45,21 @@ async function renderHtml(url: string, ctx: AdapterContext): Promise<string> {
     );
   }
 
-  const browser = await chromium.launch({
-    channel: ctx.playwrightChannel,
-    executablePath: ctx.playwrightExecutablePath,
-    headless: true,
-  });
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
   try {
+    browser = await chromium.launch({
+      channel: ctx.playwrightChannel,
+      executablePath: ctx.playwrightExecutablePath,
+      headless: true,
+    });
     const page = await browser.newPage({ userAgent: USER_AGENT });
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    // Wait for `load` (not just `domcontentloaded`) so client-side scripts that
+    // render product data / inject JSON-LD have a chance to run.
+    await page.goto(url, { waitUntil: "load", timeout: 20_000 });
     return await page.content();
   } catch (err) {
     throw new ExtractionError(`Headless render failed for ${url}: ${(err as Error).message}`, "fetch_failed");
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }

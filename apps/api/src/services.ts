@@ -53,7 +53,7 @@ async function upsertFromUrl(url: string, ctx: AdapterContext): Promise<string> 
   const adapter = extracted.source;
   const vendor = await prisma.vendor.upsert({
     where: { domain },
-    update: { adapter },
+    update: { adapter, capabilities: [adapter] },
     create: {
       domain,
       name: domain,

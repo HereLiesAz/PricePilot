@@ -44,6 +44,9 @@ export const ebayAdapter: VendorAdapter = {
   canHandle: (url) => /(^|\.)ebay\.[a-z.]+$/i.test(url.hostname),
   isAvailable: (ctx) => Boolean(ctx.credentials.ebayOAuthToken),
   async extract(url: string, ctx: AdapterContext): Promise<ExtractedProduct> {
+    if (!ctx.credentials.ebayOAuthToken) {
+      throw new ExtractionError("eBay OAuth token is missing", "adapter_unavailable");
+    }
     const legacyId = ebayLegacyId(new URL(url));
     if (!legacyId) {
       throw new ExtractionError(`Could not find an eBay item id in ${url}`, "bad_url");
