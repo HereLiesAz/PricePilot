@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
+    "@pricepilot/db": "workspace:*",
     "@pricepilot/shared": "workspace:*",
+    "cheerio": "^1.0.0",
     "fastify": "^5.2.1",
     "fastify-type-provider-zod": "^4.0.2",
     "zod": "^3.24.1"
