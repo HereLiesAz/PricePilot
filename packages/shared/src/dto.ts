@@ -130,6 +130,29 @@ export const ImportResultDTO = z.object({
 });
 export type ImportResultDTO = z.infer<typeof ImportResultDTO>;
 
+// --- Price history -------------------------------------------------------
+
+export const PriceHistoryPointDTO = z.object({
+  price: Money,
+  currency: z.string(),
+  ts: isoDate,
+});
+export type PriceHistoryPointDTO = z.infer<typeof PriceHistoryPointDTO>;
+
+/**
+ * Offer price history plus a small summary used by the web history chart and
+ * (later) deal scoring: lowest / median / latest over the recorded window.
+ */
+export const PriceHistoryDTO = z.object({
+  offerId: z.string(),
+  currency: z.string(),
+  points: z.array(PriceHistoryPointDTO),
+  lowest: Money.nullable(),
+  median: Money.nullable(),
+  latest: Money.nullable(),
+});
+export type PriceHistoryDTO = z.infer<typeof PriceHistoryDTO>;
+
 // --- Extraction ----------------------------------------------------------
 
 /**
@@ -144,6 +167,9 @@ export const ExtractedProduct = z.object({
   inStock: z.boolean().nullable(),
   image: z.string().nullable(),
   gtin: z.string().nullable(),
+  mpn: z.string().nullable().default(null),
   brand: z.string().nullable(),
+  /** Which adapter tier produced this result (api | structured-data | headless). */
+  source: z.string().default("structured-data"),
 });
 export type ExtractedProduct = z.infer<typeof ExtractedProduct>;

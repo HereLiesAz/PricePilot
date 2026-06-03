@@ -35,6 +35,9 @@ importers:
       '@pricepilot/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pricepilot/scrapers':
+        specifier: workspace:*
+        version: link:../../packages/scrapers
       '@pricepilot/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -47,6 +50,9 @@ importers:
       fastify-type-provider-zod:
         specifier: ^4.0.2
         version: 4.0.2(fastify@5.8.5)(zod@3.25.76)
+      playwright-core:
+        specifier: ^1.49.1
+        version: 1.60.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -161,6 +167,28 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+
+  packages/scrapers:
+    dependencies:
+      '@pricepilot/shared':
+        specifier: workspace:*
+        version: link:../shared
+      cheerio:
+        specifier: ^1.0.0
+        version: 1.2.0
+      playwright-core:
+        specifier: ^1.49.1
+        version: 1.60.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.19.19
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@22.19.19)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)
 
   packages/shared:
     dependencies:
@@ -3079,6 +3107,11 @@ packages:
 
   pkg-types@2.3.1:
     resolution: {integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==}
+
+  playwright-core@1.60.0:
+    resolution: {integrity: sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -6856,6 +6889,8 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.0.8
       pathe: 2.0.3
+
+  playwright-core@1.60.0: {}
 
   possible-typed-array-names@1.1.0: {}
 

@@ -9,9 +9,11 @@ import {
   ListDetailDTO,
   ListSummaryDTO,
   OfferDTO,
+  PriceHistoryDTO,
   UpdateListInput,
   type ImportFailureDTO,
 } from "@pricepilot/shared";
+import type { AdapterContext } from "@pricepilot/scrapers";
 import { getDefaultUserId, prisma } from "../db.js";
 import { AppError } from "../errors.js";
 import { parseImport } from "../import/parse.js";
@@ -21,16 +23,14 @@ import {
   toListDetailDTO,
   toListSummaryDTO,
   toOfferDTO,
+  toPriceHistoryDTO,
 } from "../mappers.js";
 
 const IdParam = z.object({ id: z.string().min(1) });
 const ItemParams = z.object({ id: z.string().min(1), itemId: z.string().min(1) });
 const OfferParams = z.object({ offerId: z.string().min(1) });
 
-export function registerListRoutes(
-  fastify: FastifyInstance,
-  opts: { enableAmazon: boolean },
-): void {
+export function registerListRoutes(fastify: FastifyInstance, ctx: AdapterContext): void {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
 
   // --- Lists ------------------------------------------------------------
@@ -90,7 +90,7 @@ export function registerListRoutes(
     { schema: { params: IdParam, body: AddItemInput, response: { 201: ListDetailDTO } } },
     async (req, reply) => {
       await ensureListExists(req.params.id);
-      await addItemToList(req.params.id, req.body, { enableAmazon: opts.enableAmazon });
+      await addItemToList(req.params.id, req.body, ctx);
       return reply.code(201).send(await requireList(req.params.id));
     },
   );
@@ -138,7 +138,7 @@ export function registerListRoutes(
               qty: row.qty ?? 1,
               notes: row.notes,
             },
-            { enableAmazon: opts.enableAmazon },
+            ctx,
           );
           added++;
         } catch (err) {
@@ -157,7 +157,7 @@ export function registerListRoutes(
     { schema: { params: OfferParams, response: { 200: OfferDTO } } },
     async (req) => {
       try {
-        await refreshOffer(req.params.offerId, { enableAmazon: opts.enableAmazon });
+        await refreshOffer(req.params.offerId, ctx);
       } catch (err) {
         if ((err as Error).message === "offer_not_found") {
           throw new AppError(404, "Offer not found");
@@ -169,6 +169,20 @@ export function registerListRoutes(
         include: { vendor: true },
       });
       return toOfferDTO(offer!);
+    },
+  );
+
+  app.get(
+    "/api/offers/:offerId/history",
+    { schema: { params: OfferParams, response: { 200: PriceHistoryDTO } } },
+    async (req) => {
+      const offer = await prisma.offer.findUnique({ where: { id: req.params.offerId } });
+      if (!offer) throw new AppError(404, "Offer not found");
+      const points = await prisma.priceHistory.findMany({
+        where: { offerId: offer.id },
+        orderBy: { ts: "asc" },
+      });
+      return toPriceHistoryDTO(offer.id, offer.currency, points);
     },
   );
 }

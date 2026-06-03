@@ -1,6 +1,6 @@
 import type { AddItemInput, ExtractedProduct } from "@pricepilot/shared";
+import { extractOffer, vendorDomain, type AdapterContext } from "@pricepilot/scrapers";
 import { prisma } from "./db.js";
-import { fetchAndExtract, vendorDomain } from "./extract/fetch.js";
 
 /**
  * Resolve an add-item input into a Product (and, when a URL is given, a Vendor
@@ -13,10 +13,10 @@ import { fetchAndExtract, vendorDomain } from "./extract/fetch.js";
 export async function addItemToList(
   listId: string,
   input: AddItemInput,
-  opts: { enableAmazon: boolean },
+  ctx: AdapterContext,
 ): Promise<string> {
   const productId = input.url
-    ? await upsertFromUrl(input.url, opts.enableAmazon)
+    ? await upsertFromUrl(input.url, ctx)
     : await createManualProduct(input.title!);
 
   const item = await prisma.listItem.upsert({
@@ -44,18 +44,21 @@ async function createManualProduct(title: string): Promise<string> {
   return product.id;
 }
 
-async function upsertFromUrl(url: string, enableAmazon: boolean): Promise<string> {
+async function upsertFromUrl(url: string, ctx: AdapterContext): Promise<string> {
   const domain = vendorDomain(url);
-  const extracted = await fetchAndExtract(url, { enableAmazon });
+  const extracted = await extractOffer(url, ctx);
 
+  // The extractor reports which tier produced the result (e.g. "api:ebay",
+  // "structured-data"); record it as the vendor's adapter.
+  const adapter = extracted.source;
   const vendor = await prisma.vendor.upsert({
     where: { domain },
-    update: {},
+    update: { adapter, capabilities: [adapter] },
     create: {
       domain,
       name: domain,
-      adapter: "structured-data",
-      capabilities: ["structured-data"],
+      adapter,
+      capabilities: [adapter],
     },
   });
 
@@ -83,6 +86,7 @@ async function resolveProduct(extracted: ExtractedProduct): Promise<string> {
       brand: extracted.brand,
       image: extracted.image,
       gtin: extracted.gtin,
+      mpn: extracted.mpn,
     },
   });
   return product.id;
@@ -126,13 +130,10 @@ async function recordOffer(
  * Re-run extraction for an existing offer, update it, and append price history.
  * This is the manual "refresh price" path; the scheduled worker arrives later.
  */
-export async function refreshOffer(
-  offerId: string,
-  opts: { enableAmazon: boolean },
-): Promise<void> {
+export async function refreshOffer(offerId: string, ctx: AdapterContext): Promise<void> {
   const offer = await prisma.offer.findUnique({ where: { id: offerId } });
   if (!offer) throw new Error("offer_not_found");
 
-  const extracted = await fetchAndExtract(offer.url, { enableAmazon: opts.enableAmazon });
+  const extracted = await extractOffer(offer.url, ctx);
   await recordOffer(offer.productId, offer.vendorId, offer.url, extracted);
 }

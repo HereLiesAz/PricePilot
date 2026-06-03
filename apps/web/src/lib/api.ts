@@ -5,6 +5,7 @@ import {
   ListDetailDTO,
   ListSummaryDTO,
   OfferDTO,
+  PriceHistoryDTO,
   type AddItemInput,
   type CreateListInput,
   type ImportInput,
@@ -98,4 +99,7 @@ export const listsApi = {
 
   refreshOffer: (offerId: string) =>
     request(`/api/offers/${offerId}/refresh`, OfferDTO, { method: "POST" }),
+
+  offerHistory: (offerId: string, signal?: AbortSignal) =>
+    request(`/api/offers/${offerId}/history`, PriceHistoryDTO, { signal }),
 };

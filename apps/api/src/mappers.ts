@@ -3,6 +3,7 @@ import type {
   ListDetailDTO,
   ListSummaryDTO,
   OfferDTO,
+  PriceHistoryDTO,
 } from "@pricepilot/shared";
 import type { Prisma } from "@pricepilot/db";
 
@@ -100,6 +101,35 @@ export function toListSummaryDTO(
     createdAt: list.createdAt.toISOString(),
     updatedAt: list.updatedAt.toISOString(),
   };
+}
+
+/** Build the price-history DTO plus a lowest/median/latest summary. */
+export function toPriceHistoryDTO(
+  offerId: string,
+  currency: string,
+  rows: Prisma.PriceHistoryGetPayload<object>[],
+): PriceHistoryDTO {
+  const points = rows.map((r) => ({
+    price: Number(r.price.toString()),
+    currency: r.currency,
+    ts: r.ts.toISOString(),
+  }));
+  const prices = points.map((p) => p.price);
+  return {
+    offerId,
+    currency,
+    points,
+    lowest: prices.length ? Math.min(...prices) : null,
+    median: median(prices),
+    latest: prices.length ? prices[prices.length - 1]! : null,
+  };
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
 }
 
 /** Prisma include used wherever we return a full list detail. */

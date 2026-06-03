@@ -17,6 +17,16 @@ const EnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // Headless (Playwright) fallback tier — opt-in; needs a system browser.
+  ENABLE_PLAYWRIGHT: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  PLAYWRIGHT_CHANNEL: z.string().optional(),
+  PLAYWRIGHT_EXECUTABLE_PATH: z.string().optional(),
+  // API-friendly vendor credentials (lead with these). All optional.
+  EBAY_OAUTH_TOKEN: z.string().optional(),
+  BESTBUY_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

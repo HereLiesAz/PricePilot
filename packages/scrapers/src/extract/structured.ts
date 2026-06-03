@@ -2,21 +2,17 @@ import * as cheerio from "cheerio";
 import { ExtractedProduct } from "@pricepilot/shared";
 
 /**
- * Structured-data extractor (tier 2 in PLAN.md): read `schema.org/Product` +
+ * Structured-data extraction (tier 2 in PLAN.md): read `schema.org/Product` +
  * `Offer` from JSON-LD, falling back to Open Graph product tags. Pure and
- * network-free so it is unit-testable against HTML fixtures; the HTTP fetch
- * lives in `fetch.ts`.
+ * network-free so it is unit-testable against HTML fixtures; the HTTP/headless
+ * fetch lives in the adapters.
  *
  * Returns `null` when no usable product signal is found.
  */
-export function extractFromHtml(html: string): ExtractedProduct | null {
+export function extractFromHtml(html: string, source = "structured-data"): ExtractedProduct | null {
   const $ = cheerio.load(html);
 
-  const fromJsonLd = extractJsonLd($);
-  const fromOg = extractOpenGraph($);
-
-  // Prefer JSON-LD; backfill any missing fields from Open Graph.
-  const merged = mergeCandidates(fromJsonLd, fromOg);
+  const merged = mergeCandidates(extractJsonLd($), extractOpenGraph($));
   if (!merged || !merged.title) return null;
 
   const parsed = ExtractedProduct.safeParse({
@@ -26,7 +22,9 @@ export function extractFromHtml(html: string): ExtractedProduct | null {
     inStock: merged.inStock ?? null,
     image: merged.image ?? null,
     gtin: merged.gtin ?? null,
+    mpn: merged.mpn ?? null,
     brand: merged.brand ?? null,
+    source,
   });
   return parsed.success ? parsed.data : null;
 }
@@ -38,13 +36,11 @@ interface Candidate {
   inStock?: boolean | null;
   image?: string | null;
   gtin?: string | null;
+  mpn?: string | null;
   brand?: string | null;
 }
 
-function mergeCandidates(
-  primary: Candidate | null,
-  secondary: Candidate | null,
-): Candidate | null {
+function mergeCandidates(primary: Candidate | null, secondary: Candidate | null): Candidate | null {
   if (!primary) return secondary;
   if (!secondary) return primary;
   return {
@@ -54,6 +50,7 @@ function mergeCandidates(
     inStock: primary.inStock ?? secondary.inStock,
     image: primary.image ?? secondary.image,
     gtin: primary.gtin ?? secondary.gtin,
+    mpn: primary.mpn ?? secondary.mpn,
     brand: primary.brand ?? secondary.brand,
   };
 }
@@ -86,8 +83,8 @@ function extractJsonLd($: cheerio.CheerioAPI): Candidate | null {
       product["gtin14"],
       product["gtin8"],
       product["gtin"],
-      product["mpn"],
     ),
+    mpn: firstString(product["mpn"], product["sku"]),
     price: offer ? toNumber(offer["price"] ?? offer["lowPrice"]) : null,
     currency: offer ? asString(offer["priceCurrency"]) : undefined,
     inStock: offer ? availabilityToStock(offer["availability"]) : null,
@@ -95,10 +92,9 @@ function extractJsonLd($: cheerio.CheerioAPI): Candidate | null {
 }
 
 /**
- * Flatten JSON-LD into a list of object nodes, recursing through arrays, the
- * `@graph` container, and nested properties (e.g. a Product under a WebPage's
- * `mainEntity`). Outer nodes are pushed before their children so a top-level
- * Product is still preferred by `find`.
+ * Flatten JSON-LD into object nodes, recursing through arrays, `@graph`, and
+ * nested properties (e.g. a Product under a WebPage's `mainEntity`). Outer
+ * nodes are pushed before children so a top-level Product is preferred.
  */
 function collectNodes(value: unknown, out: unknown[]): void {
   if (Array.isArray(value)) {
@@ -141,9 +137,7 @@ function extractOpenGraph($: cheerio.CheerioAPI): Candidate | null {
   const priceAmount = meta("product:price:amount") ?? meta("og:price:amount");
   const availability = meta("og:availability") ?? meta("product:availability");
   const isProductPage =
-    (meta("og:type") ?? "").includes("product") ||
-    Boolean(priceAmount) ||
-    Boolean(availability);
+    (meta("og:type") ?? "").includes("product") || Boolean(priceAmount) || Boolean(availability);
   // Only treat the page as a product when there is a real product signal — a
   // bare <title> alone (e.g. a blog) must not count.
   if (!isProductPage) return null;
@@ -175,7 +169,7 @@ function firstString(...values: unknown[]): string | null {
   return null;
 }
 
-function toNumber(v: unknown): number | null {
+export function toNumber(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v !== "string") return null;
 
@@ -223,9 +217,7 @@ function firstImage(v: unknown): string | null {
 function availabilityToStock(v: unknown): boolean | null {
   const s = asString(v)?.toLowerCase();
   if (!s) return null;
-  if (s.includes("instock") || s.includes("in_stock") || s.includes("in stock")) {
-    return true;
-  }
+  if (s.includes("instock") || s.includes("in_stock") || s.includes("in stock")) return true;
   if (
     s.includes("outofstock") ||
     s.includes("out_of_stock") ||
