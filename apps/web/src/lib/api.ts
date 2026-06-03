@@ -1,14 +1,18 @@
 import { z } from "zod";
 import {
+  AlertDTO,
   HealthResponse,
   ImportResultDTO,
   ListDetailDTO,
   ListSummaryDTO,
   OfferDTO,
   PriceHistoryDTO,
+  VapidKeyDTO,
   type AddItemInput,
+  type CreateAlertInput,
   type CreateListInput,
   type ImportInput,
+  type PushSubscriptionInput,
 } from "@pricepilot/shared";
 
 /**
@@ -41,17 +45,29 @@ async function request<T>(
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
   });
-  if (!res.ok) {
-    let message = `${res.status} ${res.statusText}`;
-    try {
-      const body = (await res.json()) as { message?: string };
-      if (body.message) message = body.message;
-    } catch {
-      // Non-JSON error body; keep the status text.
-    }
-    throw new ApiError(res.status, message);
-  }
+  await throwIfNotOk(res);
   return schema.parse(await res.json());
+}
+
+/** Like `request`, for endpoints that return no body (204 No Content). */
+async function requestVoid(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...init?.headers },
+  });
+  await throwIfNotOk(res);
+}
+
+async function throwIfNotOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const body = (await res.json()) as { message?: string };
+    if (body.message) message = body.message;
+  } catch {
+    // Non-JSON error body; keep the status text.
+  }
+  throw new ApiError(res.status, message);
 }
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
@@ -73,10 +89,7 @@ export const listsApi = {
       body: JSON.stringify(input),
     }),
 
-  remove: (id: string) =>
-    fetch(`${API_URL}/api/lists/${id}`, { method: "DELETE" }).then((r) => {
-      if (!r.ok) throw new ApiError(r.status, "Failed to delete list");
-    }),
+  remove: (id: string) => requestVoid(`/api/lists/${id}`, { method: "DELETE" }),
 
   addItem: (listId: string, input: AddItemInput) =>
     request(`/api/lists/${listId}/items`, ListDetailDTO, {
@@ -85,11 +98,7 @@ export const listsApi = {
     }),
 
   removeItem: (listId: string, itemId: string) =>
-    fetch(`${API_URL}/api/lists/${listId}/items/${itemId}`, { method: "DELETE" }).then(
-      (r) => {
-        if (!r.ok) throw new ApiError(r.status, "Failed to remove item");
-      },
-    ),
+    requestVoid(`/api/lists/${listId}/items/${itemId}`, { method: "DELETE" }),
 
   import: (listId: string, input: ImportInput) =>
     request(`/api/lists/${listId}/import`, ImportResultDTO, {
@@ -102,4 +111,25 @@ export const listsApi = {
 
   offerHistory: (offerId: string, signal?: AbortSignal) =>
     request(`/api/offers/${offerId}/history`, PriceHistoryDTO, { signal }),
+
+  // --- Alerts + Web Push ---
+  pushKey: () => request("/api/push/key", VapidKeyDTO),
+
+  pushSubscribe: (sub: PushSubscriptionInput) =>
+    request(`/api/push/subscribe`, z.object({ ok: z.literal(true) }), {
+      method: "POST",
+      body: JSON.stringify(sub),
+    }),
+
+  itemAlerts: (listId: string, itemId: string, signal?: AbortSignal) =>
+    request(`/api/lists/${listId}/items/${itemId}/alerts`, z.array(AlertDTO), { signal }),
+
+  createAlert: (listId: string, itemId: string, input: CreateAlertInput) =>
+    request(`/api/lists/${listId}/items/${itemId}/alerts`, AlertDTO, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  deleteAlert: (alertId: string) =>
+    requestVoid(`/api/alerts/${alertId}`, { method: "DELETE" }),
 };

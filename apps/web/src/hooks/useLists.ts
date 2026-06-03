@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AddItemInput, CreateListInput, ImportInput } from "@pricepilot/shared";
+import type {
+  AddItemInput,
+  CreateAlertInput,
+  CreateListInput,
+  ImportInput,
+} from "@pricepilot/shared";
 import { listsApi } from "@/lib/api";
 
 const listsKey = ["lists"] as const;
@@ -84,5 +89,31 @@ export function useOfferHistory(offerId: string, enabled: boolean) {
     queryKey: ["offer-history", offerId],
     queryFn: ({ signal }) => listsApi.offerHistory(offerId, signal),
     enabled,
+  });
+}
+
+const alertsKey = (listId: string, itemId: string) => ["alerts", listId, itemId] as const;
+
+export function useItemAlerts(listId: string, itemId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: alertsKey(listId, itemId),
+    queryFn: ({ signal }) => listsApi.itemAlerts(listId, itemId, signal),
+    enabled,
+  });
+}
+
+export function useCreateAlert(listId: string, itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAlertInput) => listsApi.createAlert(listId, itemId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: alertsKey(listId, itemId) }),
+  });
+}
+
+export function useDeleteAlert(listId: string, itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (alertId: string) => listsApi.deleteAlert(alertId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: alertsKey(listId, itemId) }),
   });
 }

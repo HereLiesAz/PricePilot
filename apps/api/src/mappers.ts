@@ -1,4 +1,5 @@
 import type {
+  AlertDTO,
   ListItemDTO,
   ListDetailDTO,
   ListSummaryDTO,
@@ -6,6 +7,18 @@ import type {
   PriceHistoryDTO,
 } from "@pricepilot/shared";
 import type { Prisma } from "@pricepilot/db";
+
+export function toAlertDTO(alert: Prisma.AlertGetPayload<object>): AlertDTO {
+  return {
+    id: alert.id,
+    listItemId: alert.listItemId,
+    rule: alert.rule,
+    channel: alert.channel,
+    threshold: alert.threshold === null ? null : Number(alert.threshold.toString()),
+    active: alert.active,
+    createdAt: alert.createdAt.toISOString(),
+  };
+}
 
 /** Convert a Prisma Decimal (or null) to a plain number for DTO serialization. */
 function dec(value: Prisma.Decimal | null): number | null {

@@ -124,6 +124,13 @@ async function recordOffer(
       data: { offerId: offer.id, price: extracted.price, currency: extracted.currency },
     });
   }
+
+  // Ensure the offer is tracked by the watcher (apps/worker schedules from this).
+  await prisma.scrapeJob.upsert({
+    where: { offerId: offer.id },
+    update: {},
+    create: { offerId: offer.id, status: "PENDING", nextRunAt: new Date() },
+  });
 }
 
 /**

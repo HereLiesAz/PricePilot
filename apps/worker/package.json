@@ -1,0 +1,32 @@
+{
+  "name": "@pricepilot/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pricepilot/db": "workspace:*",
+    "@pricepilot/scrapers": "workspace:*",
+    "@pricepilot/shared": "workspace:*",
+    "bullmq": "^5.34.0",
+    "cheerio": "^1.0.0",
+    "playwright-core": "^1.49.1",
+    "web-push": "^3.6.7",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/web-push": "^3.6.4",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

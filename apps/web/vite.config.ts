@@ -29,6 +29,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
         navigateFallback: "index.html",
+        // Plain-JS push + notificationclick handlers injected into the generated
+        // service worker (served from public/). Drives Web Push price alerts.
+        importScripts: ["push-handler.js"],
         runtimeCaching: [
           {
             // Network-first for our own API: fresh data online, cached fallback offline.
