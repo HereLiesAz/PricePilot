@@ -45,17 +45,29 @@ async function request<T>(
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
   });
-  if (!res.ok) {
-    let message = `${res.status} ${res.statusText}`;
-    try {
-      const body = (await res.json()) as { message?: string };
-      if (body.message) message = body.message;
-    } catch {
-      // Non-JSON error body; keep the status text.
-    }
-    throw new ApiError(res.status, message);
-  }
+  await throwIfNotOk(res);
   return schema.parse(await res.json());
+}
+
+/** Like `request`, for endpoints that return no body (204 No Content). */
+async function requestVoid(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...init?.headers },
+  });
+  await throwIfNotOk(res);
+}
+
+async function throwIfNotOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const body = (await res.json()) as { message?: string };
+    if (body.message) message = body.message;
+  } catch {
+    // Non-JSON error body; keep the status text.
+  }
+  throw new ApiError(res.status, message);
 }
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
@@ -77,10 +89,7 @@ export const listsApi = {
       body: JSON.stringify(input),
     }),
 
-  remove: (id: string) =>
-    fetch(`${API_URL}/api/lists/${id}`, { method: "DELETE" }).then((r) => {
-      if (!r.ok) throw new ApiError(r.status, "Failed to delete list");
-    }),
+  remove: (id: string) => requestVoid(`/api/lists/${id}`, { method: "DELETE" }),
 
   addItem: (listId: string, input: AddItemInput) =>
     request(`/api/lists/${listId}/items`, ListDetailDTO, {
@@ -89,11 +98,7 @@ export const listsApi = {
     }),
 
   removeItem: (listId: string, itemId: string) =>
-    fetch(`${API_URL}/api/lists/${listId}/items/${itemId}`, { method: "DELETE" }).then(
-      (r) => {
-        if (!r.ok) throw new ApiError(r.status, "Failed to remove item");
-      },
-    ),
+    requestVoid(`/api/lists/${listId}/items/${itemId}`, { method: "DELETE" }),
 
   import: (listId: string, input: ImportInput) =>
     request(`/api/lists/${listId}/import`, ImportResultDTO, {
@@ -126,7 +131,5 @@ export const listsApi = {
     }),
 
   deleteAlert: (alertId: string) =>
-    fetch(`${API_URL}/api/alerts/${alertId}`, { method: "DELETE" }).then((r) => {
-      if (!r.ok) throw new ApiError(r.status, "Failed to delete alert");
-    }),
+    requestVoid(`/api/alerts/${alertId}`, { method: "DELETE" }),
 };

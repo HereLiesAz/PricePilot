@@ -37,7 +37,9 @@ export async function enqueueDueOffers(queue: Queue, batch: number): Promise<num
       JOB_SCRAPE_OFFER,
       { offerId } satisfies ScrapeOfferData,
       // De-dupe in-flight jobs per offer (BullMQ forbids ":" in custom ids).
-      { jobId: `offer-${offerId}`, removeOnComplete: true, removeOnFail: 100 },
+      // removeOnFail must be true: a kept failed job with this id would block
+      // all future enqueues for the offer (status/backoff live in the DB).
+      { jobId: `offer-${offerId}`, removeOnComplete: true, removeOnFail: true },
     );
   }
   return offerIds.size;

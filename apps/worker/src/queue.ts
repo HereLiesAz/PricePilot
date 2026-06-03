@@ -24,6 +24,8 @@ export function connectionFromUrl(redisUrl: string): ConnectionOptions {
     password: u.password || undefined,
     db: u.pathname.length > 1 ? Number(u.pathname.slice(1)) || 0 : 0,
     maxRetriesPerRequest: null,
+    // Managed Redis (ElastiCache/Heroku/…) uses rediss:// and requires TLS.
+    ...(u.protocol === "rediss:" ? { tls: {} } : {}),
   };
 }
 

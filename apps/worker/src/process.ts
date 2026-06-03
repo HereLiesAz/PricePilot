@@ -48,13 +48,16 @@ export async function processOffer(offerId: string, ctx: AdapterContext): Promis
   try {
     extracted = await extractOffer(offer.url, ctx);
   } catch (err) {
-    if (!(err instanceof ExtractionError)) throw err;
+    // Reschedule with backoff on *any* failure, otherwise an unexpected error
+    // (not just ExtractionError) leaves nextRunAt stale and the scheduler
+    // re-enqueues it every tick — a tight failure loop.
     const failureCount = (job?.failureCount ?? 0) + 1;
     await rescheduleJob(offerId, "FAILED", failureCount, nextCadenceMinutes({
       failureCount,
       priceChanged: false,
       nearTarget: false,
     }));
+    if (!(err instanceof ExtractionError)) throw err;
     return;
   }
 

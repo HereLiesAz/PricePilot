@@ -58,4 +58,8 @@ async function main(): Promise<void> {
   process.on("SIGTERM", () => void shutdown());
 }
 
-void main();
+main().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("[worker] fatal startup error:", err);
+  process.exit(1);
+});
