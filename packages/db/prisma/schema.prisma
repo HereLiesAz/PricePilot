@@ -1,0 +1,182 @@
+// PricePilot — Prisma schema (Phase 0 stub).
+//
+// Models mirror the data model in PLAN.md and the zod schemas in
+// `@pricepilot/shared`. This is a stub: relations and indexes are sketched so
+// later phases (CRUD, scraping, history, alerts) can build on a stable shape.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ListType {
+  SHOPPING
+  WISHLIST
+}
+
+enum AlertRule {
+  TARGET_HIT
+  GOOD_DEAL
+  BACK_IN_STOCK
+}
+
+enum AlertChannel {
+  WEB_PUSH
+  EMAIL
+}
+
+enum ScrapeStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  PAUSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lists  List[]
+  alerts Alert[]
+}
+
+model List {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      ListType @default(SHOPPING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ListItem[]
+
+  @@index([userId])
+}
+
+model ListItem {
+  id          String   @id @default(cuid())
+  listId      String
+  productId   String
+  targetPrice Decimal? @db.Decimal(12, 2)
+  qty         Int      @default(1)
+  notes       String?
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  list    List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id])
+  alerts  Alert[]
+
+  @@unique([listId, productId])
+  @@index([productId])
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  gtin            String?
+  upc             String?
+  mpn             String?
+  normalizedTitle String
+  brand           String?
+  category        String?
+  image           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  offers    Offer[]
+  listItems ListItem[]
+
+  @@index([gtin])
+  @@index([upc])
+  @@index([mpn])
+}
+
+model Vendor {
+  id           String   @id @default(cuid())
+  name         String
+  domain       String   @unique
+  adapter      String
+  capabilities String[]
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  offers Offer[]
+}
+
+model Offer {
+  id            String    @id @default(cuid())
+  productId     String
+  vendorId      String
+  url           String
+  price         Decimal?  @db.Decimal(12, 2)
+  currency      String    @default("USD")
+  shipping      Decimal?  @db.Decimal(12, 2)
+  inStock       Boolean?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor    Vendor         @relation(fields: [vendorId], references: [id])
+  history   PriceHistory[]
+  scrapeJob ScrapeJob?
+
+  @@unique([vendorId, url])
+  @@index([productId])
+}
+
+model PriceHistory {
+  id       String   @id @default(cuid())
+  offerId  String
+  price    Decimal  @db.Decimal(12, 2)
+  currency String   @default("USD")
+  ts       DateTime @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, ts])
+}
+
+model Alert {
+  id         String       @id @default(cuid())
+  userId     String
+  listItemId String?
+  rule       AlertRule
+  channel    AlertChannel @default(WEB_PUSH)
+  threshold  Decimal?     @db.Decimal(12, 2)
+  active     Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listItem ListItem? @relation(fields: [listItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model ScrapeJob {
+  id             String       @id @default(cuid())
+  offerId        String       @unique
+  status         ScrapeStatus @default(PENDING)
+  cadenceMinutes Int          @default(1440)
+  nextRunAt      DateTime?
+  failureCount   Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRunAt])
+}

@@ -1,0 +1,42 @@
+# Local development services for PricePilot.
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# Values match .env.example (DATABASE_URL / REDIS_URL).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pricepilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pricepilot
+      POSTGRES_PASSWORD: pricepilot
+      POSTGRES_DB: pricepilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pricepilot-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pricepilot -d pricepilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: pricepilot-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - pricepilot-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pricepilot-pgdata:
+  pricepilot-redisdata:
