@@ -5,12 +5,13 @@ many vendors and maintain the best-possible price via server-side fetching and a
 intelligence layer. See [`PLAN.md`](./PLAN.md) for the full product plan and
 roadmap.
 
-> **Status: Phase 1 — Core loop.** On top of the Phase 0 scaffold, the API now
-> exposes list/item CRUD, a structured-data (JSON-LD / Open Graph) product
-> extractor, CSV/JSON bulk import, and a manual price-refresh path that records
-> price history. The web app has real list and list-detail views (create lists,
-> add by URL or name, bulk import, refresh prices). Scheduled scraping, alerts,
-> and cross-vendor matching arrive in later phases — see [`PLAN.md`](./PLAN.md).
+> **Status: Phase 2 — Scraping breadth.** On top of the Phase 1 core loop, the
+> new `packages/scrapers` package defines a tiered **vendor-adapter interface**:
+> official APIs (eBay, Best Buy) → structured-data (JSON-LD / Open Graph) →
+> headless browser (Playwright). The API records **price history** and serves it
+> via a history endpoint; the web app renders a per-offer **trend chart**.
+> Scheduled scraping, Web Push alerts, and cross-vendor matching arrive in later
+> phases — see [`PLAN.md`](./PLAN.md).
 
 ## Why a backend exists
 
@@ -25,16 +26,31 @@ violates their ToS; see [`PLAN.md`](./PLAN.md) for the risk note.
 
 ```
 apps/
-  web/        React 19 + TS + Vite + vite-plugin-pwa  (installable PWA; lists UI)
-  api/        Fastify 5 + TS + zod + Prisma            (/health, lists/items API)
+  web/        React 19 + TS + Vite + vite-plugin-pwa  (installable PWA; lists UI + chart)
+  api/        Fastify 5 + TS + zod + Prisma            (/health, lists/items/history API)
 packages/
   shared/     zod schemas + DTOs + shared TS types  (@pricepilot/shared)
   db/         Prisma schema + migrations + client    (@pricepilot/db, Postgres)
+  scrapers/   tiered vendor-adapter interface + adapters  (@pricepilot/scrapers)
 infra/        docker-compose (Postgres + Redis)
 ```
 
-Later phases add `apps/worker` (Playwright + BullMQ), `packages/scrapers`
-(vendor adapters), and `packages/intel` (matching, normalization, Claude).
+Later phases add `apps/worker` (BullMQ scheduler consuming `packages/scrapers`)
+and `packages/intel` (matching, normalization, Claude).
+
+### Vendor adapters (`packages/scrapers`)
+
+Each adapter declares a **tier**; the registry prefers the cleanest, ToS-safe
+option that can handle a URL:
+
+1. **Official API** — `ebay`, `bestbuy` (used when their credentials are set).
+2. **Structured data** — universal HTTP + JSON-LD/Open Graph fallback.
+3. **Headless** — Playwright render for JS-heavy pages (opt-in; needs a system
+   browser, `playwright-core` doesn't bundle one). Used as a fallback when
+   structured data is missing and `ENABLE_PLAYWRIGHT=true`.
+
+Amazon stays gated behind `ENABLE_AMAZON_ADAPTER`. The same package will be
+shared by the Phase 3 worker.
 
 ## Prerequisites
 
@@ -85,10 +101,11 @@ The PWA talks only to our own API; all vendor fetching is server-side.
 | `DELETE /api/lists/:id/items/:itemId`  | Remove an item                                     |
 | `POST /api/lists/:id/import`           | Bulk import CSV/JSON rows                           |
 | `POST /api/offers/:offerId/refresh`    | Re-extract an offer; append price history          |
+| `GET /api/offers/:offerId/history`     | Price points + lowest / median / latest summary    |
 
-Add-by-URL uses tier-2 **structured-data extraction** (JSON-LD `schema.org/Product`
-+ `Offer`, falling back to Open Graph). Amazon URLs are rejected unless
-`ENABLE_AMAZON_ADAPTER=true`. The Playwright and Claude-fallback tiers come later.
+Add-by-URL runs through the tiered adapters in `packages/scrapers` (official API
+→ structured data → headless). Amazon URLs are rejected unless
+`ENABLE_AMAZON_ADAPTER=true`. The Claude-extraction fallback tier comes later.
 
 ## Scripts
 

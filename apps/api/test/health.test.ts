@@ -14,6 +14,7 @@ describe("GET /health", () => {
         API_PORT: 3001,
         CORS_ORIGIN: "http://localhost:5173",
         ENABLE_AMAZON_ADAPTER: false,
+        ENABLE_PLAYWRIGHT: false,
       },
     });
     await app.ready();

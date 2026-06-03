@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { ListDetailDTO, ListSummaryDTO } from "@pricepilot/shared";
+import { ListDetailDTO, ListSummaryDTO, PriceHistoryDTO } from "@pricepilot/shared";
 import { buildServer } from "../src/server.js";
 import { prisma } from "../src/db.js";
 
@@ -22,6 +22,7 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
         CORS_ORIGIN: "http://localhost:5173",
         DATABASE_URL: process.env.DATABASE_URL,
         ENABLE_AMAZON_ADAPTER: false,
+        ENABLE_PLAYWRIGHT: false,
       },
     });
     await app.ready();
@@ -40,6 +41,7 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
     await prisma.listItem.deleteMany();
     await prisma.list.deleteMany();
     await prisma.product.deleteMany();
+    await prisma.vendor.deleteMany();
   });
 
   async function createList(name = "Holiday gifts") {
@@ -117,5 +119,27 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
   it("returns 404 for a missing list", async () => {
     const res = await app.inject({ method: "GET", url: "/api/lists/does-not-exist" });
     expect(res.statusCode).toBe(404);
+  });
+
+  it("returns an offer's price history with lowest/median/latest", async () => {
+    // Seed a product + vendor + offer + history directly (no network).
+    const product = await prisma.product.create({ data: { normalizedTitle: "Tracked" } });
+    const vendor = await prisma.vendor.create({
+      data: { name: "shop", domain: "shop.example", adapter: "structured-data" },
+    });
+    const offer = await prisma.offer.create({
+      data: { productId: product.id, vendorId: vendor.id, url: "https://shop.example/p", currency: "USD" },
+    });
+    for (const price of [120, 100, 110]) {
+      await prisma.priceHistory.create({ data: { offerId: offer.id, price, currency: "USD" } });
+    }
+
+    const res = await app.inject({ method: "GET", url: `/api/offers/${offer.id}/history` });
+    expect(res.statusCode).toBe(200);
+    const history = PriceHistoryDTO.parse(res.json());
+    expect(history.points).toHaveLength(3);
+    expect(history.lowest).toBe(100);
+    expect(history.median).toBe(110);
+    expect(history.latest).toBe(110);
   });
 });

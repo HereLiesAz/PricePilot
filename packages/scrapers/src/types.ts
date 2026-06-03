@@ -1,0 +1,62 @@
+import type { ExtractedProduct } from "@pricepilot/shared";
+
+/**
+ * Vendor access tiers (PLAN.md): official API → structured data → headless
+ * browser → (Claude fallback, later). Adapters declare their tier; the registry
+ * prefers lower-cost, ToS-safe tiers first.
+ */
+export type AdapterTier = "api" | "structured-data" | "headless";
+
+export type ExtractionErrorCode =
+  | "amazon_disabled"
+  | "fetch_failed"
+  | "no_product_data"
+  | "bad_url"
+  | "adapter_unavailable";
+
+export class ExtractionError extends Error {
+  constructor(
+    message: string,
+    readonly code: ExtractionErrorCode,
+  ) {
+    super(message);
+    this.name = "ExtractionError";
+  }
+}
+
+/** Per-vendor credentials, populated from env by the consumer (api/worker). */
+export interface AdapterCredentials {
+  /** eBay Browse API OAuth application token (client-credentials grant). */
+  ebayOAuthToken?: string;
+  /** Best Buy developer API key. */
+  bestBuyApiKey?: string;
+}
+
+export interface AdapterContext {
+  /** Amazon adapter is opt-in / off-by-default (ToS risk, see PLAN.md). */
+  enableAmazon: boolean;
+  /** Allow the headless (Playwright) tier as a fallback. */
+  enablePlaywright: boolean;
+  /** Playwright browser channel (e.g. "chrome") or executable path. */
+  playwrightChannel?: string;
+  playwrightExecutablePath?: string;
+  credentials: AdapterCredentials;
+  /** Injectable fetch (tests). Defaults to global fetch. */
+  fetchImpl?: typeof fetch;
+}
+
+export interface VendorAdapter {
+  readonly name: string;
+  readonly tier: AdapterTier;
+  readonly capabilities: string[];
+  /** Whether this adapter knows how to handle the given URL's domain. */
+  canHandle(url: URL): boolean;
+  /** Whether the adapter is usable in this context (e.g. has credentials). */
+  isAvailable(ctx: AdapterContext): boolean;
+  /** Fetch + normalize a product/offer. Throws `ExtractionError` on failure. */
+  extract(url: string, ctx: AdapterContext): Promise<ExtractedProduct>;
+}
+
+export function getFetch(ctx: AdapterContext): typeof fetch {
+  return ctx.fetchImpl ?? fetch;
+}

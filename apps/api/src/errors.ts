@@ -1,6 +1,6 @@
 import type { FastifyError, FastifyInstance } from "fastify";
 import { hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
-import { ExtractionError } from "./extract/fetch.js";
+import { ExtractionError } from "@pricepilot/scrapers";
 
 /** Application-level error carrying an HTTP status code. */
 export class AppError extends Error {
@@ -19,6 +19,7 @@ export function extractionStatus(code: ExtractionError["code"]): number {
       return 400;
     case "amazon_disabled":
     case "no_product_data":
+    case "adapter_unavailable":
       return 422;
     case "fetch_failed":
       return 502;

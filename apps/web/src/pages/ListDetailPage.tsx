@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, LineChart, Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import type { ListItemDTO } from "@pricepilot/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Sparkline } from "@/components/Sparkline";
 import {
   useAddItem,
   useImportList,
   useList,
+  useOfferHistory,
   useRefreshOffer,
   useRemoveItem,
 } from "@/hooks/useLists";
@@ -238,64 +240,117 @@ function ItemsTable({ items, listId }: { items: ListItemDTO[]; listId: string })
 function ItemRow({ item, listId }: { item: ListItemDTO; listId: string }) {
   const refresh = useRefreshOffer(listId);
   const remove = useRemoveItem(listId);
+  const [showHistory, setShowHistory] = useState(false);
   const best = item.bestOffer;
   const belowTarget =
     best?.price != null && item.targetPrice != null && best.price <= item.targetPrice;
 
   return (
-    <tr className="border-b border-[var(--color-border)] last:border-0">
-      <td className="px-4 py-3">
-        <div className="font-medium">{item.product.normalizedTitle}</div>
-        {best && (
-          <a
-            href={best.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-[var(--color-muted-foreground)] hover:underline"
-          >
-            {best.vendor.domain}
-          </a>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        {best ? (
-          <span className="inline-flex items-center gap-2">
-            {formatPrice(best.price, best.currency)}
-            {belowTarget && <Badge variant="success">target</Badge>}
-            {best.inStock === false && <Badge variant="destructive">out</Badge>}
-          </span>
-        ) : (
-          <span className="text-[var(--color-muted-foreground)]">no offer</span>
-        )}
-      </td>
-      <td className="px-4 py-3">{formatPrice(item.targetPrice)}</td>
-      <td className="px-4 py-3 text-[var(--color-muted-foreground)]">
-        {timeAgo(best?.lastCheckedAt ?? null)}
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex justify-end gap-1">
+    <>
+      <tr className="border-b border-[var(--color-border)] last:border-0">
+        <td className="px-4 py-3">
+          <div className="font-medium">{item.product.normalizedTitle}</div>
           {best && (
+            <a
+              href={best.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-[var(--color-muted-foreground)] hover:underline"
+            >
+              {best.vendor.domain}
+            </a>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          {best ? (
+            <span className="inline-flex items-center gap-2">
+              {formatPrice(best.price, best.currency)}
+              {belowTarget && <Badge variant="success">target</Badge>}
+              {best.inStock === false && <Badge variant="destructive">out</Badge>}
+            </span>
+          ) : (
+            <span className="text-[var(--color-muted-foreground)]">no offer</span>
+          )}
+        </td>
+        <td className="px-4 py-3">{formatPrice(item.targetPrice)}</td>
+        <td className="px-4 py-3 text-[var(--color-muted-foreground)]">
+          {timeAgo(best?.lastCheckedAt ?? null)}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex justify-end gap-1">
+            {best && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Price history"
+                  aria-pressed={showHistory}
+                  onClick={() => setShowHistory((v) => !v)}
+                >
+                  <LineChart />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Refresh price"
+                  onClick={() => refresh.mutate(best.id)}
+                  disabled={refresh.isPending}
+                >
+                  <RefreshCw className={refresh.isPending ? "animate-spin" : ""} />
+                </Button>
+              </>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Refresh price"
-              onClick={() => refresh.mutate(best.id)}
-              disabled={refresh.isPending}
+              aria-label="Remove item"
+              onClick={() => remove.mutate(item.id)}
+              disabled={remove.isPending}
             >
-              <RefreshCw className={refresh.isPending ? "animate-spin" : ""} />
+              <Trash2 />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Remove item"
-            onClick={() => remove.mutate(item.id)}
-            disabled={remove.isPending}
-          >
-            <Trash2 />
-          </Button>
-        </div>
-      </td>
-    </tr>
+          </div>
+        </td>
+      </tr>
+      {best && showHistory && (
+        <tr className="border-b border-[var(--color-border)] bg-[var(--color-muted)]/30">
+          <td colSpan={5} className="px-4 py-3">
+            <HistoryPanel offerId={best.id} currency={best.currency} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function HistoryPanel({ offerId, currency }: { offerId: string; currency: string }) {
+  const { data, isPending, isError } = useOfferHistory(offerId, true);
+
+  if (isPending) {
+    return (
+      <span className="flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
+        <Loader2 className="size-3 animate-spin" /> Loading history…
+      </span>
+    );
+  }
+  if (isError || !data) {
+    return <span className="text-xs text-[var(--color-destructive)]">Could not load history.</span>;
+  }
+
+  const values = data.points.map((p) => p.price);
+  return (
+    <div className="flex flex-wrap items-center gap-6">
+      <Sparkline values={values} />
+      <dl className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-xs">
+        <dt className="text-[var(--color-muted-foreground)]">Lowest</dt>
+        <dd>{formatPrice(data.lowest, currency)}</dd>
+        <dt className="text-[var(--color-muted-foreground)]">Median</dt>
+        <dd>{formatPrice(data.median, currency)}</dd>
+        <dt className="text-[var(--color-muted-foreground)]">Latest</dt>
+        <dd>{formatPrice(data.latest, currency)}</dd>
+        <dt className="text-[var(--color-muted-foreground)]">Points</dt>
+        <dd>{data.points.length}</dd>
+      </dl>
+    </div>
   );
 }

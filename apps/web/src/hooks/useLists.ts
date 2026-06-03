@@ -72,6 +72,17 @@ export function useRefreshOffer(listId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (offerId: string) => listsApi.refreshOffer(offerId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: listKey(listId) }),
+    onSuccess: (_offer, offerId) => {
+      void qc.invalidateQueries({ queryKey: listKey(listId) });
+      void qc.invalidateQueries({ queryKey: ["offer-history", offerId] });
+    },
+  });
+}
+
+export function useOfferHistory(offerId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["offer-history", offerId],
+    queryFn: ({ signal }) => listsApi.offerHistory(offerId, signal),
+    enabled,
   });
 }
