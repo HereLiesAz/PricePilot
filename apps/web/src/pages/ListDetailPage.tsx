@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, LineChart, Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
-import type { ListItemDTO } from "@pricepilot/shared";
+import type { AlertRule, ListItemDTO } from "@pricepilot/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/Sparkline";
 import {
   useAddItem,
+  useCreateAlert,
+  useDeleteAlert,
   useImportList,
+  useItemAlerts,
   useList,
   useOfferHistory,
   useRefreshOffer,
@@ -315,7 +318,10 @@ function ItemRow({ item, listId }: { item: ListItemDTO; listId: string }) {
       {best && showHistory && (
         <tr className="border-b border-[var(--color-border)] bg-[var(--color-muted)]/30">
           <td colSpan={5} className="px-4 py-3">
-            <HistoryPanel offerId={best.id} currency={best.currency} />
+            <div className="flex flex-col gap-4">
+              <HistoryPanel offerId={best.id} currency={best.currency} />
+              <AlertsSection listId={listId} item={item} />
+            </div>
           </td>
         </tr>
       )}
@@ -351,6 +357,70 @@ function HistoryPanel({ offerId, currency }: { offerId: string; currency: string
         <dt className="text-[var(--color-muted-foreground)]">Points</dt>
         <dd>{data.points.length}</dd>
       </dl>
+    </div>
+  );
+}
+
+const ALERT_LABELS: Record<AlertRule, string> = {
+  TARGET_HIT: "Target hit",
+  GOOD_DEAL: "Good deal",
+  BACK_IN_STOCK: "Back in stock",
+};
+
+function AlertsSection({ listId, item }: { listId: string; item: ListItemDTO }) {
+  const { data: alerts } = useItemAlerts(listId, item.id, true);
+  const createAlert = useCreateAlert(listId, item.id);
+  const deleteAlert = useDeleteAlert(listId, item.id);
+
+  const existingRules = new Set((alerts ?? []).map((a) => a.rule));
+
+  function add(rule: AlertRule) {
+    // TARGET_HIT needs a threshold; use the item's target price.
+    const threshold = rule === "TARGET_HIT" ? (item.targetPrice ?? undefined) : undefined;
+    createAlert.mutate({ rule, channel: "WEB_PUSH", threshold });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs font-medium text-[var(--color-muted-foreground)]">Alerts</span>
+      <div className="flex flex-wrap items-center gap-2">
+        {(alerts ?? []).map((a) => (
+          <Badge key={a.id} variant="secondary" className="gap-1">
+            {ALERT_LABELS[a.rule]}
+            {a.threshold != null && ` ≤ ${formatPrice(a.threshold)}`}
+            <button
+              type="button"
+              aria-label={`Remove ${ALERT_LABELS[a.rule]} alert`}
+              className="ml-1 hover:text-[var(--color-destructive)]"
+              onClick={() => deleteAlert.mutate(a.id)}
+            >
+              ×
+            </button>
+          </Badge>
+        ))}
+        {(["TARGET_HIT", "GOOD_DEAL", "BACK_IN_STOCK"] as AlertRule[])
+          .filter((rule) => !existingRules.has(rule))
+          .map((rule) => {
+            const needsTarget = rule === "TARGET_HIT" && item.targetPrice == null;
+            return (
+              <Button
+                key={rule}
+                variant="outline"
+                size="sm"
+                disabled={needsTarget || createAlert.isPending}
+                title={needsTarget ? "Set a target price first" : undefined}
+                onClick={() => add(rule)}
+              >
+                + {ALERT_LABELS[rule]}
+              </Button>
+            );
+          })}
+      </div>
+      {createAlert.isError && (
+        <p className="text-xs text-[var(--color-destructive)]">
+          {(createAlert.error as Error).message}
+        </p>
+      )}
     </div>
   );
 }

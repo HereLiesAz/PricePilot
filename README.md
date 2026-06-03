@@ -5,13 +5,13 @@ many vendors and maintain the best-possible price via server-side fetching and a
 intelligence layer. See [`PLAN.md`](./PLAN.md) for the full product plan and
 roadmap.
 
-> **Status: Phase 2 — Scraping breadth.** On top of the Phase 1 core loop, the
-> new `packages/scrapers` package defines a tiered **vendor-adapter interface**:
-> official APIs (eBay, Best Buy) → structured-data (JSON-LD / Open Graph) →
-> headless browser (Playwright). The API records **price history** and serves it
-> via a history endpoint; the web app renders a per-offer **trend chart**.
-> Scheduled scraping, Web Push alerts, and cross-vendor matching arrive in later
-> phases — see [`PLAN.md`](./PLAN.md).
+> **Status: Phase 3 — Watcher.** On top of the Phase 2 adapters, a new
+> `apps/worker` (BullMQ + Redis) scrapes tracked offers on an **adaptive
+> schedule** (checks near-target / volatile offers more often; backs off stable
+> ones and on repeated failures), records price history, and fires **Web Push**
+> price alerts (target-hit / good-deal / back-in-stock). Cross-vendor matching,
+> the Claude intelligence layer, and auth arrive in later phases — see
+> [`PLAN.md`](./PLAN.md).
 
 ## Why a backend exists
 
@@ -27,7 +27,8 @@ violates their ToS; see [`PLAN.md`](./PLAN.md) for the risk note.
 ```
 apps/
   web/        React 19 + TS + Vite + vite-plugin-pwa  (installable PWA; lists UI + chart)
-  api/        Fastify 5 + TS + zod + Prisma            (/health, lists/items/history API)
+  api/        Fastify 5 + TS + zod + Prisma            (lists/items/history/alerts/push API)
+  worker/     BullMQ + Redis watcher                   (adaptive scrape schedule + Web Push)
 packages/
   shared/     zod schemas + DTOs + shared TS types  (@pricepilot/shared)
   db/         Prisma schema + migrations + client    (@pricepilot/db, Postgres)
@@ -35,8 +36,20 @@ packages/
 infra/        docker-compose (Postgres + Redis)
 ```
 
-Later phases add `apps/worker` (BullMQ scheduler consuming `packages/scrapers`)
-and `packages/intel` (matching, normalization, Claude).
+Later phases add `packages/intel` (cross-vendor matching, normalization, Claude
+extraction/scoring).
+
+### Watcher (`apps/worker`)
+
+A BullMQ worker drives the price watch. A scheduler tick enqueues offers whose
+`ScrapeJob` is due; each job re-extracts via `packages/scrapers`, appends a
+`PriceHistory` point, evaluates each tracked item's **alerts**, and reschedules
+with an **adaptive cadence** (near-target/volatile → hours; stable → daily;
+failures → exponential backoff). Triggered alerts are delivered as **Web Push**
+notifications (VAPID), so they arrive even when the app is closed.
+
+Run it with `pnpm --filter @pricepilot/worker dev` (needs Redis + Postgres, and
+`VAPID_*` keys for push — `npx web-push generate-vapid-keys`).
 
 ### Vendor adapters (`packages/scrapers`)
 
@@ -102,6 +115,10 @@ The PWA talks only to our own API; all vendor fetching is server-side.
 | `POST /api/lists/:id/import`           | Bulk import CSV/JSON rows                           |
 | `POST /api/offers/:offerId/refresh`    | Re-extract an offer; append price history          |
 | `GET /api/offers/:offerId/history`     | Price points + lowest / median / latest summary    |
+| `GET /api/push/key`                    | VAPID public key for Web Push subscription         |
+| `POST /api/push/subscribe`             | Register a Web Push subscription                    |
+| `GET·POST /api/lists/:id/items/:itemId/alerts` | List / create price alerts for an item     |
+| `DELETE /api/alerts/:alertId`          | Delete an alert                                     |
 
 Add-by-URL runs through the tiered adapters in `packages/scrapers` (official API
 → structured data → headless). Amazon URLs are rejected unless

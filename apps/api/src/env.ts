@@ -27,6 +27,9 @@ const EnvSchema = z.object({
   // API-friendly vendor credentials (lead with these). All optional.
   EBAY_OAUTH_TOKEN: z.string().optional(),
   BESTBUY_API_KEY: z.string().optional(),
+  // Web Push: the public VAPID key is served to clients so they can subscribe.
+  // The private key lives only in the worker, which sends notifications.
+  VAPID_PUBLIC_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

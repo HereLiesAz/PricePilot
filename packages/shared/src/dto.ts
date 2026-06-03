@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ListType } from "./schemas.js";
+import { AlertChannel, AlertRule, ListType } from "./schemas.js";
 
 /**
  * API contract: request inputs and response DTOs shared by `apps/api` (zod
@@ -152,6 +152,54 @@ export const PriceHistoryDTO = z.object({
   latest: Money.nullable(),
 });
 export type PriceHistoryDTO = z.infer<typeof PriceHistoryDTO>;
+
+// --- Alerts --------------------------------------------------------------
+
+export const AlertDTO = z.object({
+  id: z.string(),
+  listItemId: z.string().nullable(),
+  rule: AlertRule,
+  channel: AlertChannel,
+  threshold: Money.nullable(),
+  active: z.boolean(),
+  createdAt: isoDate,
+});
+export type AlertDTO = z.infer<typeof AlertDTO>;
+
+export const CreateAlertInput = z
+  .object({
+    rule: AlertRule,
+    channel: AlertChannel.default("WEB_PUSH"),
+    // Required for TARGET_HIT; optional for GOOD_DEAL (uses history) / BACK_IN_STOCK.
+    threshold: Money.optional(),
+  })
+  .refine((v) => v.rule !== "TARGET_HIT" || v.threshold !== undefined, {
+    message: "TARGET_HIT alerts require a threshold",
+  });
+export type CreateAlertInput = z.infer<typeof CreateAlertInput>;
+
+// --- Web Push ------------------------------------------------------------
+
+export const VapidKeyDTO = z.object({ publicKey: z.string() });
+export type VapidKeyDTO = z.infer<typeof VapidKeyDTO>;
+
+export const PushSubscriptionInput = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({
+    p256dh: z.string().min(1),
+    auth: z.string().min(1),
+  }),
+});
+export type PushSubscriptionInput = z.infer<typeof PushSubscriptionInput>;
+
+/** Payload delivered to the service worker's push handler. */
+export const PushPayload = z.object({
+  title: z.string(),
+  body: z.string(),
+  url: z.string().optional(),
+  rule: AlertRule.optional(),
+});
+export type PushPayload = z.infer<typeof PushPayload>;
 
 // --- Extraction ----------------------------------------------------------
 

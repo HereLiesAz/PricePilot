@@ -1,14 +1,18 @@
 import { z } from "zod";
 import {
+  AlertDTO,
   HealthResponse,
   ImportResultDTO,
   ListDetailDTO,
   ListSummaryDTO,
   OfferDTO,
   PriceHistoryDTO,
+  VapidKeyDTO,
   type AddItemInput,
+  type CreateAlertInput,
   type CreateListInput,
   type ImportInput,
+  type PushSubscriptionInput,
 } from "@pricepilot/shared";
 
 /**
@@ -102,4 +106,27 @@ export const listsApi = {
 
   offerHistory: (offerId: string, signal?: AbortSignal) =>
     request(`/api/offers/${offerId}/history`, PriceHistoryDTO, { signal }),
+
+  // --- Alerts + Web Push ---
+  pushKey: () => request("/api/push/key", VapidKeyDTO),
+
+  pushSubscribe: (sub: PushSubscriptionInput) =>
+    request(`/api/push/subscribe`, z.object({ ok: z.literal(true) }), {
+      method: "POST",
+      body: JSON.stringify(sub),
+    }),
+
+  itemAlerts: (listId: string, itemId: string, signal?: AbortSignal) =>
+    request(`/api/lists/${listId}/items/${itemId}/alerts`, z.array(AlertDTO), { signal }),
+
+  createAlert: (listId: string, itemId: string, input: CreateAlertInput) =>
+    request(`/api/lists/${listId}/items/${itemId}/alerts`, AlertDTO, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  deleteAlert: (alertId: string) =>
+    fetch(`${API_URL}/api/alerts/${alertId}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new ApiError(r.status, "Failed to delete alert");
+    }),
 };

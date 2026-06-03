@@ -1,6 +1,7 @@
 import { Moon, Plane, Sun } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatusBadge } from "@/components/ApiStatusBadge";
+import { EnableAlertsButton } from "@/components/EnableAlertsButton";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ export function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3">
+            <EnableAlertsButton />
             <ApiStatusBadge />
             <Button
               variant="ghost"
