@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    // Emit CommonJS: the Prisma client is generated as CJS, and keeping this
+    // package CJS lets `apps/api` load it externally (un-bundled) at runtime —
+    // Prisma's engine resolution breaks when bundled. See PLAN.md notes.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "verbatimModuleSyntax": false
   },
   "include": ["src"]
 }

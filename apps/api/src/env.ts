@@ -10,6 +10,13 @@ const EnvSchema = z.object({
   API_PORT: z.coerce.number().int().positive().default(3001),
   // Comma-separated list of allowed CORS origins for the web app.
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  // Postgres connection string (see infra/docker-compose.yml / .env.example).
+  DATABASE_URL: z.string().optional(),
+  // Amazon adapter is opt-in / off-by-default (ToS risk; see PLAN.md).
+  ENABLE_AMAZON_ADAPTER: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

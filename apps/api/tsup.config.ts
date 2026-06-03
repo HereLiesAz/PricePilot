@@ -6,7 +6,8 @@ export default defineConfig({
   target: "node22",
   clean: true,
   sourcemap: true,
-  // Bundle internal workspace packages (TS source) so `node dist/index.js`
-  // runs standalone; keep third-party deps external.
+  // Bundle the lightweight shared package (TS source). Keep @pricepilot/db
+  // external: it compiles to CJS and loads the Prisma client at runtime —
+  // bundling Prisma breaks its query-engine resolution.
   noExternal: ["@pricepilot/shared"],
 });

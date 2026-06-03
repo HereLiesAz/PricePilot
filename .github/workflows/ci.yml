@@ -13,6 +13,26 @@ jobs:
   build:
     name: lint · typecheck · test · build
     runs-on: ubuntu-latest
+
+    # Postgres for the API integration tests (gated on DATABASE_URL).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pricepilot
+          POSTGRES_PASSWORD: pricepilot
+          POSTGRES_DB: pricepilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pricepilot -d pricepilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://pricepilot:pricepilot@localhost:5432/pricepilot?schema=public
+
     steps:
       - uses: actions/checkout@v4
 
@@ -27,11 +47,12 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Triggers packages/db postinstall (prisma generate + tsc → db dist).
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: pnpm db:generate
+      - name: Apply database migrations
+        run: pnpm --filter @pricepilot/db db:deploy
 
       - name: Lint
         run: pnpm lint

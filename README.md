@@ -5,10 +5,12 @@ many vendors and maintain the best-possible price via server-side fetching and a
 intelligence layer. See [`PLAN.md`](./PLAN.md) for the full product plan and
 roadmap.
 
-> **Status: Phase 0 — Scaffold.** This repo currently ships the monorepo skeleton:
-> an installable React PWA shell, a Fastify API with a `/health` endpoint, shared
-> zod schemas, a Prisma schema stub, local infra, CI, and a SessionStart hook.
-> Importing, scraping, and alerts arrive in later phases.
+> **Status: Phase 1 — Core loop.** On top of the Phase 0 scaffold, the API now
+> exposes list/item CRUD, a structured-data (JSON-LD / Open Graph) product
+> extractor, CSV/JSON bulk import, and a manual price-refresh path that records
+> price history. The web app has real list and list-detail views (create lists,
+> add by URL or name, bulk import, refresh prices). Scheduled scraping, alerts,
+> and cross-vendor matching arrive in later phases — see [`PLAN.md`](./PLAN.md).
 
 ## Why a backend exists
 
@@ -23,11 +25,11 @@ violates their ToS; see [`PLAN.md`](./PLAN.md) for the risk note.
 
 ```
 apps/
-  web/        React 19 + TS + Vite + vite-plugin-pwa  (installable PWA shell)
-  api/        Fastify 5 + TS + zod                     (/health, REST/JSON API)
+  web/        React 19 + TS + Vite + vite-plugin-pwa  (installable PWA; lists UI)
+  api/        Fastify 5 + TS + zod + Prisma            (/health, lists/items API)
 packages/
-  shared/     zod schemas + shared TS types  (@pricepilot/shared)
-  db/         Prisma schema stub + client     (@pricepilot/db, Postgres)
+  shared/     zod schemas + DTOs + shared TS types  (@pricepilot/shared)
+  db/         Prisma schema + migrations + client    (@pricepilot/db, Postgres)
 infra/        docker-compose (Postgres + Redis)
 ```
 
@@ -58,12 +60,35 @@ pnpm dev
 - Web: <http://localhost:5173>
 - API: <http://localhost:3001> (try <http://localhost:3001/health>)
 
+> First time only: apply the database schema with
+> `pnpm --filter @pricepilot/db db:migrate` (dev) or `db:deploy` (prod/CI).
+
 ### End-to-end health check (web ↔ api)
 
 The web app calls `GET /health`, validates the response against the shared
 `HealthResponse` zod schema, and renders a live status badge in the header
 ("API healthy" / "API unreachable"). The **About** page shows the full payload.
-This is the Phase 0 proof that the two apps talk to each other.
+
+## API (Phase 1)
+
+The PWA talks only to our own API; all vendor fetching is server-side.
+
+| Method & path                          | Purpose                                            |
+| -------------------------------------- | -------------------------------------------------- |
+| `GET /health`                          | Liveness + version (shared `HealthResponse`)       |
+| `GET /api/lists`                       | List summaries (with item counts)                  |
+| `POST /api/lists`                      | Create a list (`SHOPPING` \| `WISHLIST`)           |
+| `GET /api/lists/:id`                   | List detail with items, products, and best offer   |
+| `PATCH /api/lists/:id`                 | Rename / retype a list                             |
+| `DELETE /api/lists/:id`                | Delete a list                                      |
+| `POST /api/lists/:id/items`            | Add by `url` (extracted) or `title` (manual)       |
+| `DELETE /api/lists/:id/items/:itemId`  | Remove an item                                     |
+| `POST /api/lists/:id/import`           | Bulk import CSV/JSON rows                           |
+| `POST /api/offers/:offerId/refresh`    | Re-extract an offer; append price history          |
+
+Add-by-URL uses tier-2 **structured-data extraction** (JSON-LD `schema.org/Product`
++ `Offer`, falling back to Open Graph). Amazon URLs are rejected unless
+`ENABLE_AMAZON_ADAPTER=true`. The Playwright and Claude-fallback tiers come later.
 
 ## Scripts
 
@@ -82,10 +107,19 @@ Run from the repo root (fan out across the workspace via `pnpm -r`):
 Target a single workspace with `--filter`, e.g.
 `pnpm --filter @pricepilot/api dev`.
 
+## Testing
+
+- `pnpm test` runs Vitest across the workspace. Extractor and import-parser
+  tests are pure/network-free. The API list/item integration tests need Postgres
+  and are **skipped unless `DATABASE_URL` is set** — start
+  `infra/docker-compose.yml`, apply migrations, then
+  `DATABASE_URL=… pnpm --filter @pricepilot/api test`.
+
 ## CI & web sessions
 
-- **CI** (`.github/workflows/ci.yml`) installs deps, generates the Prisma client,
-  then runs lint → typecheck → test → build on every push and PR.
+- **CI** (`.github/workflows/ci.yml`) spins up a Postgres service, installs deps,
+  applies migrations, then runs lint → typecheck → test → build on every push and
+  PR — so the integration tests run in CI too.
 - **SessionStart hook** (`.claude/hooks/session-start.sh`) installs dependencies
   and generates the Prisma client so Claude Code web sessions land ready to
   build/test.

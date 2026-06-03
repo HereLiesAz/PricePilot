@@ -7,6 +7,8 @@ import {
 } from "fastify-type-provider-zod";
 import { HealthResponse } from "@pricepilot/shared";
 import { corsOrigins, loadEnv, type Env } from "./env.js";
+import { registerErrorHandler } from "./errors.js";
+import { registerListRoutes } from "./routes/lists.js";
 
 const START_TIME = Date.now();
 const VERSION = process.env.npm_package_version ?? "0.0.0";
@@ -54,6 +56,11 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
       };
     },
   });
+
+  // Phase 1: list/item CRUD, import, and manual price refresh.
+  registerListRoutes(app, { enableAmazon: env.ENABLE_AMAZON_ADAPTER });
+
+  registerErrorHandler(app);
 
   return app;
 }
