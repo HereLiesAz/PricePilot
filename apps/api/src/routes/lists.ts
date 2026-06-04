@@ -10,10 +10,11 @@ import {
   ListSummaryDTO,
   OfferDTO,
   PriceHistoryDTO,
+  SearchResultDTO,
   UpdateListInput,
   type ImportFailureDTO,
 } from "@pricepilot/shared";
-import type { AdapterContext } from "@pricepilot/scrapers";
+import { searchVendors, type AdapterContext } from "@pricepilot/scrapers";
 import { getDefaultUserId, prisma } from "../db.js";
 import { AppError } from "../errors.js";
 import { parseImport } from "../import/parse.js";
@@ -170,6 +171,19 @@ export function registerListRoutes(fastify: FastifyInstance, ctx: AdapterContext
       });
       return toOfferDTO(offer!);
     },
+  );
+
+  // --- Name-search finder ----------------------------------------------
+
+  app.get(
+    "/api/search",
+    {
+      schema: {
+        querystring: z.object({ q: z.string().min(1).max(200) }),
+        response: { 200: z.array(SearchResultDTO) },
+      },
+    },
+    async (req) => searchVendors(req.query.q, ctx),
   );
 
   app.get(

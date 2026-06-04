@@ -7,6 +7,7 @@ import type {
   PriceHistoryDTO,
 } from "@pricepilot/shared";
 import type { Prisma } from "@pricepilot/db";
+import { dealScore } from "@pricepilot/intel";
 
 export function toAlertDTO(alert: Prisma.AlertGetPayload<object>): AlertDTO {
   return {
@@ -128,13 +129,17 @@ export function toPriceHistoryDTO(
     ts: r.ts.toISOString(),
   }));
   const prices = points.map((p) => p.price);
+  const latest = prices.length ? prices[prices.length - 1]! : null;
+  // Score the latest price against the *prior* distribution (exclude itself).
+  const deal = dealScore(latest, prices.slice(0, -1));
   return {
     offerId,
     currency,
     points,
     lowest: prices.length ? Math.min(...prices) : null,
     median: median(prices),
-    latest: prices.length ? prices[prices.length - 1]! : null,
+    latest,
+    deal,
   };
 }
 

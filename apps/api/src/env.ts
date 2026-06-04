@@ -30,6 +30,9 @@ const EnvSchema = z.object({
   // Web Push: the public VAPID key is served to clients so they can subscribe.
   // The private key lives only in the worker, which sends notifications.
   VAPID_PUBLIC_KEY: z.string().optional(),
+  // Intelligence layer (Claude extraction fallback + match tie-break).
+  ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

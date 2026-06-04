@@ -1,6 +1,22 @@
 import type { AddItemInput, ExtractedProduct } from "@pricepilot/shared";
 import { extractOffer, vendorDomain, type AdapterContext } from "@pricepilot/scrapers";
+import {
+  findProductMatch,
+  makeClaudeMatcher,
+  normalizeTitle,
+  STRONG_MATCH,
+  WEAK_MATCH,
+  type ClaudeMatcher,
+} from "@pricepilot/intel";
 import { prisma } from "./db.js";
+
+// Optional Claude match tie-breaker, enabled when an API key is configured.
+const claudeMatcher: ClaudeMatcher | null = process.env.ANTHROPIC_API_KEY
+  ? makeClaudeMatcher({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      model: process.env.ANTHROPIC_MODEL,
+    })
+  : null;
 
 /**
  * Resolve an add-item input into a Product (and, when a URL is given, a Vendor
@@ -73,13 +89,53 @@ async function upsertFromUrl(url: string, ctx: AdapterContext): Promise<string> 
   return productId;
 }
 
-async function resolveProduct(extracted: ExtractedProduct): Promise<string> {
-  if (extracted.gtin) {
-    const existing = await prisma.product.findFirst({
-      where: { gtin: extracted.gtin },
-    });
-    if (existing) return existing.id;
+/** Build a bounded candidate pool for product matching (see resolveProduct). */
+async function candidateProducts(extracted: ExtractedProduct) {
+  const idWhere: { gtin?: string; mpn?: string }[] = [];
+  if (extracted.gtin) idWhere.push({ gtin: extracted.gtin });
+  if (extracted.mpn) idWhere.push({ mpn: extracted.mpn });
+  if (idWhere.length > 0) {
+    const byId = await prisma.product.findMany({ where: { OR: idWhere }, take: 200 });
+    if (byId.length > 0) return byId;
   }
+  // Distinctive title tokens (longest first) → catalog-wide keyword candidates.
+  const tokens = normalizeTitle(extracted.title)
+    .split(" ")
+    .filter((t) => t.length >= 4)
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 3);
+  if (tokens.length > 0) {
+    return prisma.product.findMany({
+      where: { OR: tokens.map((t) => ({ normalizedTitle: { contains: t } })) },
+      take: 200,
+    });
+  }
+  return prisma.product.findMany({ take: 200, orderBy: { createdAt: "desc" } });
+}
+
+async function resolveProduct(extracted: ExtractedProduct): Promise<string> {
+  // Candidate pool for cross-vendor grouping (PLAN.md): products sharing a
+  // GTIN/MPN; else a title-keyword query so older matches aren't missed as the
+  // catalog grows (a bounded recent set is only the last resort).
+  const pool = await candidateProducts(extracted);
+
+  const match = findProductMatch(
+    { title: extracted.title, gtin: extracted.gtin, mpn: extracted.mpn },
+    pool.map((p) => ({ id: p.id, normalizedTitle: p.normalizedTitle, gtin: p.gtin, mpn: p.mpn })),
+  );
+  if (match) {
+    // Exact identifier or strong title match wins outright.
+    if (match.by !== "title" || match.score >= STRONG_MATCH) return match.productId;
+    // Ambiguous fuzzy band → Claude tie-break when available.
+    if (claudeMatcher && match.score >= WEAK_MATCH) {
+      const chosen = await claudeMatcher(
+        { title: extracted.title, brand: extracted.brand, gtin: extracted.gtin },
+        pool.map((p) => ({ id: p.id, title: p.normalizedTitle })),
+      );
+      if (chosen) return chosen;
+    }
+  }
+
   const product = await prisma.product.create({
     data: {
       normalizedTitle: extracted.title.trim(),

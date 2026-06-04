@@ -5,7 +5,7 @@ import type { ExtractedProduct } from "@pricepilot/shared";
  * browser → (Claude fallback, later). Adapters declare their tier; the registry
  * prefers lower-cost, ToS-safe tiers first.
  */
-export type AdapterTier = "api" | "structured-data" | "headless";
+export type AdapterTier = "api" | "structured-data" | "headless" | "claude";
 
 export type ExtractionErrorCode =
   | "amazon_disabled"
@@ -43,6 +43,13 @@ export interface AdapterContext {
   credentials: AdapterCredentials;
   /** Injectable fetch (tests). Defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /**
+   * Optional tier-4 Claude extraction fallback (from @pricepilot/intel), wired
+   * by the consumer when ANTHROPIC_API_KEY is set. Given cleaned page HTML, it
+   * returns a normalized product or null. Kept as a plain function so scrapers
+   * stays free of the Anthropic SDK.
+   */
+  claudeFallback?: (input: { html: string; url: string }) => Promise<ExtractedProduct | null>;
 }
 
 export interface VendorAdapter {

@@ -12,8 +12,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
     "@fastify/cors": "^10.0.2",
     "@pricepilot/db": "workspace:*",
+    "@pricepilot/intel": "workspace:*",
     "@pricepilot/scrapers": "workspace:*",
     "@pricepilot/shared": "workspace:*",
     "cheerio": "^1.0.0",

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/Sparkline";
+import { DealBadge } from "@/components/DealBadge";
 import {
   useAddItem,
   useCreateAlert,
@@ -346,7 +347,10 @@ function HistoryPanel({ offerId, currency }: { offerId: string; currency: string
   const values = data.points.map((p) => p.price);
   return (
     <div className="flex flex-wrap items-center gap-6">
-      <Sparkline values={values} />
+      <div className="flex flex-col gap-2">
+        <Sparkline values={values} />
+        <DealBadge tier={data.deal.tier} percentile={data.deal.percentile} />
+      </div>
       <dl className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-xs">
         <dt className="text-[var(--color-muted-foreground)]">Lowest</dt>
         <dd>{formatPrice(data.lowest, currency)}</dd>
