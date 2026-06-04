@@ -6,6 +6,7 @@ import {
   CreateListInput,
   ImportInput,
   ImportResultDTO,
+  ImportWishlistInput,
   ListDetailDTO,
   ListSummaryDTO,
   OfferDTO,
@@ -14,7 +15,7 @@ import {
   UpdateListInput,
   type ImportFailureDTO,
 } from "@pricepilot/shared";
-import { searchVendors, type AdapterContext } from "@pricepilot/scrapers";
+import { fetchText, parseWishlist, searchVendors, type AdapterContext } from "@pricepilot/scrapers";
 import { getDefaultUserId, prisma } from "../db.js";
 import { AppError } from "../errors.js";
 import { parseImport } from "../import/parse.js";
@@ -147,6 +148,34 @@ export function registerListRoutes(fastify: FastifyInstance, ctx: AdapterContext
         }
       }
 
+      return { added, failed, list: await requireList(req.params.id) };
+    },
+  );
+
+  app.post(
+    "/api/lists/:id/import-wishlist",
+    { schema: { params: IdParam, body: ImportWishlistInput, response: { 200: ImportResultDTO } } },
+    async (req) => {
+      await ensureListExists(req.params.id);
+
+      let urls: string[];
+      try {
+        const html = await fetchText(req.body.url, ctx);
+        urls = parseWishlist(html, req.body.url);
+      } catch (err) {
+        throw new AppError(502, `Could not load wishlist: ${(err as Error).message}`);
+      }
+
+      const failed: ImportFailureDTO[] = [];
+      let added = 0;
+      for (let i = 0; i < urls.length; i++) {
+        try {
+          await addItemToList(req.params.id, { url: urls[i]!, qty: 1 }, ctx);
+          added++;
+        } catch (err) {
+          failed.push({ row: i + 1, input: urls[i]!, error: (err as Error).message });
+        }
+      }
       return { added, failed, list: await requireList(req.params.id) };
     },
   );

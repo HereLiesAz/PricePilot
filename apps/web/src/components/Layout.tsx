@@ -2,6 +2,7 @@ import { Moon, Plane, Sun } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatusBadge } from "@/components/ApiStatusBadge";
 import { EnableAlertsButton } from "@/components/EnableAlertsButton";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh flex flex-col">
+      <OfflineBanner />
       <header className="border-b border-[var(--color-border)]">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-4 px-4 py-3">
           <div className="flex items-center gap-2 font-semibold">

@@ -7,7 +7,10 @@ import type {
   PriceHistoryDTO,
 } from "@pricepilot/shared";
 import type { Prisma } from "@pricepilot/db";
-import { dealScore } from "@pricepilot/intel";
+import { convertCurrency, dealScore, landedPrice, unitPrice } from "@pricepilot/intel";
+
+/** Base currency used to compare offers priced in different currencies. */
+const BASE_CURRENCY = "USD";
 
 export function toAlertDTO(alert: Prisma.AlertGetPayload<object>): AlertDTO {
   return {
@@ -40,7 +43,10 @@ type ListWithItems = Prisma.ListGetPayload<{
   };
 }>;
 
-export function toOfferDTO(offer: OfferWithVendor): OfferDTO {
+export function toOfferDTO(offer: OfferWithVendor, productTitle?: string): OfferDTO {
+  const price = dec(offer.price);
+  const shipping = dec(offer.shipping);
+  const landed = price === null ? null : landedPrice(price, shipping ?? 0);
   return {
     id: offer.id,
     vendor: {
@@ -50,29 +56,34 @@ export function toOfferDTO(offer: OfferWithVendor): OfferDTO {
       adapter: offer.vendor.adapter,
     },
     url: offer.url,
-    price: dec(offer.price),
+    price,
     currency: offer.currency,
-    shipping: dec(offer.shipping),
+    shipping,
+    landed,
+    unitPrice: price !== null && productTitle ? unitPrice(price, productTitle) : null,
     inStock: offer.inStock,
     lastCheckedAt: offer.lastCheckedAt?.toISOString() ?? null,
   };
 }
 
-/** Lowest landed price wins; offers without a price sort last. */
+/**
+ * Best offer = lowest landed cost, normalized to a base currency so offers in
+ * different currencies compare fairly (PLAN.md). Offers without a price sort last.
+ */
 function pickBestOffer(offers: OfferDTO[]): OfferDTO | null {
   const priced = offers.filter((o) => o.price !== null);
   if (priced.length === 0) return null;
-  return priced.reduce((best, o) =>
-    landed(o) < landed(best) ? o : best,
-  );
+  return priced.reduce((best, o) => (comparableLanded(o) < comparableLanded(best) ? o : best));
 }
 
-function landed(o: OfferDTO): number {
-  return (o.price ?? Infinity) + (o.shipping ?? 0);
+function comparableLanded(o: OfferDTO): number {
+  const landed = o.landed ?? o.price ?? Infinity;
+  if (!Number.isFinite(landed)) return Infinity;
+  return convertCurrency(landed, o.currency, BASE_CURRENCY) ?? landed;
 }
 
 export function toListItemDTO(item: ListItemWithRelations): ListItemDTO {
-  const offers = item.product.offers.map(toOfferDTO);
+  const offers = item.product.offers.map((o) => toOfferDTO(o, item.product.normalizedTitle));
   return {
     id: item.id,
     qty: item.qty,

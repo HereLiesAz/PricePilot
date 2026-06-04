@@ -73,6 +73,17 @@ export function useImportList(listId: string) {
   });
 }
 
+export function useImportWishlist(listId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => listsApi.importWishlist(listId, url),
+    onSuccess: (result) => {
+      qc.setQueryData(listKey(listId), result.list);
+      void qc.invalidateQueries({ queryKey: listsKey });
+    },
+  });
+}
+
 export function useRefreshOffer(listId: string) {
   const qc = useQueryClient();
   return useMutation({

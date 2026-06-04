@@ -5,13 +5,12 @@ many vendors and maintain the best-possible price via server-side fetching and a
 intelligence layer. See [`PLAN.md`](./PLAN.md) for the full product plan and
 roadmap.
 
-> **Status: Phase 4 — Intelligence.** Adds `packages/intel`: **cross-vendor
-> matching** (exact GTIN/MPN → fuzzy title → optional Claude tie-break), a
-> **Claude extraction fallback** (tier 4, when structured-data and the headless
-> tier fail), **deal scoring** (current price vs. the offer's own history
-> distribution), and a **name-search finder** over API-friendly vendors. The
-> web app shows a deal badge and a Find page. Wishlist importers, normalization,
-> opt-in Amazon, and deploy land in Phase 5 — see [`PLAN.md`](./PLAN.md).
+> **Status: Phase 5 — Polish (roadmap complete).** Adds **wishlist import**
+> (scrape product links from a list page), **price normalization** (landed
+> price, currency conversion to a common base for best-offer selection, and
+> per-unit pricing), an **offline indicator**, the **opt-in / off-by-default
+> Amazon adapter**, and **deploy** Dockerfiles for the API and worker. This
+> completes the PLAN.md roadmap (Phases 0–5).
 
 ## Why a backend exists
 
@@ -115,6 +114,7 @@ The PWA talks only to our own API; all vendor fetching is server-side.
 | `POST /api/lists/:id/items`            | Add by `url` (extracted) or `title` (manual)       |
 | `DELETE /api/lists/:id/items/:itemId`  | Remove an item                                     |
 | `POST /api/lists/:id/import`           | Bulk import CSV/JSON rows                           |
+| `POST /api/lists/:id/import-wishlist`  | Scrape product links from a wishlist page           |
 | `POST /api/offers/:offerId/refresh`    | Re-extract an offer; append price history          |
 | `GET /api/offers/:offerId/history`     | Price points + lowest / median / latest summary    |
 | `GET /api/push/key`                    | VAPID public key for Web Push subscription         |
@@ -167,10 +167,27 @@ Target a single workspace with `--filter`, e.g.
   and generates the Prisma client so Claude Code web sessions land ready to
   build/test.
 
+## Deploy
+
+Container images for the long-running services live in `infra/`:
+
+```bash
+docker build -f infra/Dockerfile.api    -t pricepilot-api .
+docker build -f infra/Dockerfile.worker -t pricepilot-worker .
+```
+
+Run them against managed Postgres + Redis (Neon/Supabase, Upstash). The API
+image applies pending migrations (`prisma migrate deploy`) on start; both read
+config from env (`DATABASE_URL`, `REDIS_URL`, `CORS_ORIGIN`, `VAPID_*`, vendor
+keys, `ANTHROPIC_API_KEY`). Build the web app (`pnpm --filter @pricepilot/web
+build`) and host `apps/web/dist` on any static/CDN host with `VITE_API_URL`
+pointing at the API.
+
 ## Ethics & ToS
 
-Server-side fetching respects `robots.txt`, applies per-domain rate limits with
-jitter, caches responses, and sends an identifiable User-Agent. Prefer official
-vendor APIs; treat scraping adapters as best-effort and isolate breakage to the
-adapter. The Amazon adapter ships **disabled by default** — enabling it is your
-choice and your risk.
+Server-side fetching sends an identifiable User-Agent, caches responses, and
+prefers official vendor APIs; treat scraping adapters as best-effort and isolate
+breakage to the adapter. The **Amazon adapter** exists but ships **disabled by
+default** (`ENABLE_AMAZON_ADAPTER=false`): Amazon's PA-API is deprecated and
+sales-gated, so it relies on structured-data/headless/Claude tiers, which is
+against Amazon's ToS. Enabling it is your choice and your risk.
