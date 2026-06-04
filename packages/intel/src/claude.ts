@@ -93,6 +93,11 @@ export function makeClaudeExtractor(opts: ClaudeOptions): ClaudeExtractor {
 
       const input = toolInput(message, "record_product");
       if (!input) return null;
+      // currency is non-nullable with a "USD" default; drop a null/absent value
+      // so the zod default applies instead of failing validation.
+      if (input["currency"] === null || input["currency"] === undefined) {
+        delete input["currency"];
+      }
       const parsed = ExtractedProduct.safeParse({ ...input, source: "claude" });
       return parsed.success ? parsed.data : null;
     } catch {

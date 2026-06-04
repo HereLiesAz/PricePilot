@@ -73,7 +73,7 @@ export function SearchPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {results?.map((r) => (
-          <ResultCard key={r.url} result={r} listId={targetList} />
+          <ResultCard key={`${targetList}-${r.url}`} result={r} listId={targetList} />
         ))}
       </div>
     </div>

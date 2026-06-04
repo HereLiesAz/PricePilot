@@ -3,6 +3,7 @@ import { extractOffer, vendorDomain, type AdapterContext } from "@pricepilot/scr
 import {
   findProductMatch,
   makeClaudeMatcher,
+  normalizeTitle,
   STRONG_MATCH,
   WEAK_MATCH,
   type ClaudeMatcher,
@@ -88,15 +89,35 @@ async function upsertFromUrl(url: string, ctx: AdapterContext): Promise<string> 
   return productId;
 }
 
-async function resolveProduct(extracted: ExtractedProduct): Promise<string> {
-  // Candidate pool: products sharing a GTIN/MPN, else a bounded recent set for
-  // fuzzy title matching (cross-vendor grouping — see PLAN.md).
+/** Build a bounded candidate pool for product matching (see resolveProduct). */
+async function candidateProducts(extracted: ExtractedProduct) {
   const idWhere: { gtin?: string; mpn?: string }[] = [];
   if (extracted.gtin) idWhere.push({ gtin: extracted.gtin });
   if (extracted.mpn) idWhere.push({ mpn: extracted.mpn });
-  const pool = idWhere.length
-    ? await prisma.product.findMany({ where: { OR: idWhere }, take: 200 })
-    : await prisma.product.findMany({ take: 200, orderBy: { createdAt: "desc" } });
+  if (idWhere.length > 0) {
+    const byId = await prisma.product.findMany({ where: { OR: idWhere }, take: 200 });
+    if (byId.length > 0) return byId;
+  }
+  // Distinctive title tokens (longest first) → catalog-wide keyword candidates.
+  const tokens = normalizeTitle(extracted.title)
+    .split(" ")
+    .filter((t) => t.length >= 4)
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 3);
+  if (tokens.length > 0) {
+    return prisma.product.findMany({
+      where: { OR: tokens.map((t) => ({ normalizedTitle: { contains: t } })) },
+      take: 200,
+    });
+  }
+  return prisma.product.findMany({ take: 200, orderBy: { createdAt: "desc" } });
+}
+
+async function resolveProduct(extracted: ExtractedProduct): Promise<string> {
+  // Candidate pool for cross-vendor grouping (PLAN.md): products sharing a
+  // GTIN/MPN; else a title-keyword query so older matches aren't missed as the
+  // catalog grows (a bounded recent set is only the last resort).
+  const pool = await candidateProducts(extracted);
 
   const match = findProductMatch(
     { title: extracted.title, gtin: extracted.gtin, mpn: extracted.mpn },
