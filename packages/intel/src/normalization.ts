@@ -31,8 +31,11 @@ export function convertCurrency(
   to: string,
   rates: Record<string, number> = DEFAULT_RATES,
 ): number | null {
-  const f = rates[from.toUpperCase()];
-  const t = rates[to.toUpperCase()];
+  const fromUpper = from.toUpperCase();
+  const toUpper = to.toUpperCase();
+  if (fromUpper === toUpper) return amount;
+  const f = rates[fromUpper];
+  const t = rates[toUpper];
   if (!f || !t) return null;
   return Math.round(((amount / f) * t) * 100) / 100;
 }

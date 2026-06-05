@@ -168,14 +168,22 @@ export function registerListRoutes(fastify: FastifyInstance, ctx: AdapterContext
 
       const failed: ImportFailureDTO[] = [];
       let added = 0;
-      for (let i = 0; i < urls.length; i++) {
-        try {
-          await addItemToList(req.params.id, { url: urls[i]!, qty: 1 }, ctx);
-          added++;
-        } catch (err) {
-          failed.push({ row: i + 1, input: urls[i]!, error: (err as Error).message });
-        }
-      }
+      // Bounded-concurrency scrape so large wishlists don't time out the request.
+      const queue = urls.map((url, index) => ({ url, index }));
+      const concurrency = Math.min(5, queue.length);
+      await Promise.all(
+        Array.from({ length: concurrency }, async () => {
+          for (let item = queue.shift(); item; item = queue.shift()) {
+            try {
+              await addItemToList(req.params.id, { url: item.url, qty: 1 }, ctx);
+              added++;
+            } catch (err) {
+              failed.push({ row: item.index + 1, input: item.url, error: (err as Error).message });
+            }
+          }
+        }),
+      );
+      failed.sort((a, b) => a.row - b.row);
       return { added, failed, list: await requireList(req.params.id) };
     },
   );

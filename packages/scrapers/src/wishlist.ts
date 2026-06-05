@@ -53,10 +53,8 @@ function collectListUrls(value: unknown, add: (href: string | undefined) => void
   if (value && typeof value === "object") {
     const obj = value as Record<string, unknown>;
     if (typeof obj["url"] === "string") add(obj["url"]);
-    const item = obj["item"];
-    if (item && typeof item === "object" && typeof (item as Record<string, unknown>)["url"] === "string") {
-      add((item as Record<string, unknown>)["url"] as string);
-    }
+    // The loop below recurses into every nested object (incl. `item`), so its
+    // `url` is picked up there — no need for a special case here.
     for (const key of Object.keys(obj)) {
       const child = obj[key];
       if (child && typeof child === "object") collectListUrls(child, add);

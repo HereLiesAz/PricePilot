@@ -235,7 +235,10 @@ function ImportCard({ listId }: { listId: string }) {
           {importWishlist.data && (
             <p className="text-sm text-[var(--color-muted-foreground)]">
               Imported {importWishlist.data.added} item
-              {importWishlist.data.added === 1 ? "" : "s"} from the wishlist.
+              {importWishlist.data.added === 1 ? "" : "s"}
+              {importWishlist.data.failed.length > 0 &&
+                `, ${importWishlist.data.failed.length} failed`}{" "}
+              from the wishlist.
             </p>
           )}
           {importWishlist.isError && (
