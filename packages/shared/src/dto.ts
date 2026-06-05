@@ -25,6 +25,9 @@ export const VendorDTO = z.object({
 });
 export type VendorDTO = z.infer<typeof VendorDTO>;
 
+export const UnitPriceDTO = z.object({ value: Money, unit: z.string() });
+export type UnitPriceDTO = z.infer<typeof UnitPriceDTO>;
+
 export const OfferDTO = z.object({
   id: z.string(),
   vendor: VendorDTO,
@@ -32,6 +35,10 @@ export const OfferDTO = z.object({
   price: Money.nullable(),
   currency: z.string(),
   shipping: Money.nullable(),
+  /** Landed cost (price + shipping) in the offer's own currency. */
+  landed: Money.nullable(),
+  /** Price per normalized unit (per item / litre / kilo) when parseable. */
+  unitPrice: UnitPriceDTO.nullable(),
   inStock: z.boolean().nullable(),
   lastCheckedAt: isoDate.nullable(),
 });
@@ -115,6 +122,10 @@ export const ImportInput = z.object({
   data: z.string().min(1).max(1_000_000),
 });
 export type ImportInput = z.infer<typeof ImportInput>;
+
+/** Wishlist import: a vendor wishlist/list page URL to scrape product links from. */
+export const ImportWishlistInput = z.object({ url: z.string().url() });
+export type ImportWishlistInput = z.infer<typeof ImportWishlistInput>;
 
 export const ImportFailureDTO = z.object({
   row: z.number().int(),

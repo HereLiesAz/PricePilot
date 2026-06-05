@@ -107,6 +107,12 @@ export const listsApi = {
       body: JSON.stringify(input),
     }),
 
+  importWishlist: (listId: string, url: string) =>
+    request(`/api/lists/${listId}/import-wishlist`, ImportResultDTO, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+
   refreshOffer: (offerId: string) =>
     request(`/api/offers/${offerId}/refresh`, OfferDTO, { method: "POST" }),
 

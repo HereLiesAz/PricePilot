@@ -6,6 +6,7 @@ import { bestBuyAdapter } from "./adapters/bestbuy.js";
 import { structuredDataAdapter } from "./adapters/structured-data.js";
 import { playwrightAdapter } from "./adapters/playwright.js";
 import { claudeAdapter } from "./adapters/claude.js";
+import { amazonAdapter } from "./adapters/amazon.js";
 
 /**
  * API-tier adapters are tried first (cleanest + ToS-safe). The structured-data
@@ -17,6 +18,7 @@ export const apiAdapters: VendorAdapter[] = [ebayAdapter, bestBuyAdapter];
 export const fallbackAdapters: VendorAdapter[] = [playwrightAdapter, claudeAdapter];
 export const allAdapters: VendorAdapter[] = [
   ...apiAdapters,
+  amazonAdapter,
   structuredDataAdapter,
   ...fallbackAdapters,
 ];
@@ -31,6 +33,8 @@ function isAmazon(domain: string): boolean {
  */
 export function resolveAdapter(url: string, ctx: AdapterContext): VendorAdapter {
   const parsed = new URL(url);
+  // Amazon is opt-in; when enabled it uses its own (structured-data) adapter.
+  if (isAmazon(parsed.hostname) && ctx.enableAmazon) return amazonAdapter;
   const apiMatch = apiAdapters.find((a) => a.canHandle(parsed) && a.isAvailable(ctx));
   return apiMatch ?? structuredDataAdapter;
 }

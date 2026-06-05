@@ -14,6 +14,7 @@ import {
   useCreateAlert,
   useDeleteAlert,
   useImportList,
+  useImportWishlist,
   useItemAlerts,
   useList,
   useOfferHistory,
@@ -139,8 +140,10 @@ function AddItemCard({ listId }: { listId: string }) {
 
 function ImportCard({ listId }: { listId: string }) {
   const importList = useImportList(listId);
+  const importWishlist = useImportWishlist(listId);
   const [format, setFormat] = useState<"csv" | "json">("csv");
   const [data, setData] = useState("");
+  const [wishlistUrl, setWishlistUrl] = useState("");
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -206,6 +209,44 @@ function ImportCard({ listId }: { listId: string }) {
             {(importList.error as Error).message}
           </p>
         )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (wishlistUrl.trim()) importWishlist.mutate(wishlistUrl.trim(), { onSuccess: () => setWishlistUrl("") });
+          }}
+          className="mt-4 flex flex-col gap-2 border-t border-[var(--color-border)] pt-4"
+        >
+          <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+            Import a wishlist page
+          </span>
+          <div className="flex gap-3">
+            <Input
+              value={wishlistUrl}
+              onChange={(e) => setWishlistUrl(e.target.value)}
+              placeholder="https://store.example/wishlist/…"
+              aria-label="Wishlist URL"
+            />
+            <Button type="submit" variant="outline" disabled={importWishlist.isPending || !wishlistUrl.trim()}>
+              {importWishlist.isPending ? <Loader2 className="animate-spin" /> : <Upload />}
+              Import
+            </Button>
+          </div>
+          {importWishlist.data && (
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              Imported {importWishlist.data.added} item
+              {importWishlist.data.added === 1 ? "" : "s"}
+              {importWishlist.data.failed.length > 0 &&
+                `, ${importWishlist.data.failed.length} failed`}{" "}
+              from the wishlist.
+            </p>
+          )}
+          {importWishlist.isError && (
+            <p className="text-sm text-[var(--color-destructive)]">
+              {(importWishlist.error as Error).message}
+            </p>
+          )}
+        </form>
       </CardContent>
     </Card>
   );
@@ -267,11 +308,18 @@ function ItemRow({ item, listId }: { item: ListItemDTO; listId: string }) {
         </td>
         <td className="px-4 py-3">
           {best ? (
-            <span className="inline-flex items-center gap-2">
-              {formatPrice(best.price, best.currency)}
-              {belowTarget && <Badge variant="success">target</Badge>}
-              {best.inStock === false && <Badge variant="destructive">out</Badge>}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-2">
+                {formatPrice(best.price, best.currency)}
+                {belowTarget && <Badge variant="success">target</Badge>}
+                {best.inStock === false && <Badge variant="destructive">out</Badge>}
+              </span>
+              {best.unitPrice && (
+                <span className="text-xs text-[var(--color-muted-foreground)]">
+                  {formatPrice(best.unitPrice.value, best.currency)}/{best.unitPrice.unit}
+                </span>
+              )}
+            </div>
           ) : (
             <span className="text-[var(--color-muted-foreground)]">no offer</span>
           )}
