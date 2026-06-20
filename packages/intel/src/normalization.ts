@@ -10,7 +10,7 @@ export function landedPrice(price: number, shipping = 0, taxRate = 0): number {
   return Math.round((price + shipping) * (1 + taxRate) * 100) / 100;
 }
 
-/** Approximate FX rates as units-per-USD. Replace with a live feed in prod. */
+/** Seed FX rates (units-per-USD) used until a live refresh succeeds. */
 export const DEFAULT_RATES: Record<string, number> = {
   USD: 1,
   EUR: 0.92,
@@ -20,16 +20,70 @@ export const DEFAULT_RATES: Record<string, number> = {
   JPY: 156,
 };
 
+// Live rates cache, seeded with the static table and refreshed best-effort.
+let liveRates: Record<string, number> = { ...DEFAULT_RATES };
+let lastRefresh = 0;
+
+/** Current FX rates (units-per-USD): live values when refreshed, else the seed. */
+export function getRates(): Record<string, number> {
+  return liveRates;
+}
+
+interface ErApiResponse {
+  result?: string;
+  rates?: Record<string, number>;
+}
+
+export interface RefreshRatesOptions {
+  fetchImpl?: typeof fetch;
+  /** USD-base FX endpoint returning `{ rates: { ISO: perUsd } }`. */
+  url?: string;
+  /** Skip the network call if the cache is newer than this (default 12h). */
+  ttlMs?: number;
+}
+
+/**
+ * Refresh the FX cache from a free USD-base feed (open.er-api.com by default).
+ * Best-effort: on any failure or malformed payload it keeps the existing cache,
+ * so currency normalization degrades to the seed table rather than breaking.
+ */
+export async function refreshRates(opts: RefreshRatesOptions = {}): Promise<Record<string, number>> {
+  const ttl = opts.ttlMs ?? 12 * 60 * 60_000;
+  if (lastRefresh !== 0 && Date.now() - lastRefresh < ttl) return liveRates;
+
+  const doFetch = opts.fetchImpl ?? fetch;
+  const url = opts.url ?? "https://open.er-api.com/v6/latest/USD";
+  try {
+    const res = await doFetch(url);
+    if (!res.ok) return liveRates;
+    const json = (await res.json()) as ErApiResponse;
+    const rates = json.rates;
+    if (rates && typeof rates === "object") {
+      const next: Record<string, number> = { USD: 1 };
+      for (const [code, value] of Object.entries(rates)) {
+        if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+          next[code.toUpperCase()] = value;
+        }
+      }
+      liveRates = next;
+      lastRefresh = Date.now();
+    }
+  } catch {
+    // Keep the existing cache.
+  }
+  return liveRates;
+}
+
 /**
  * Convert `amount` from one ISO currency to another using a units-per-base rate
- * table. Returns null if either currency is unknown (caller can fall back to a
- * raw compare).
+ * table (defaults to the live FX cache). Returns null if either currency is
+ * unknown (caller can fall back to a raw compare).
  */
 export function convertCurrency(
   amount: number,
   from: string,
   to: string,
-  rates: Record<string, number> = DEFAULT_RATES,
+  rates: Record<string, number> = getRates(),
 ): number | null {
   const fromUpper = from.toUpperCase();
   const toUpper = to.toUpperCase();
