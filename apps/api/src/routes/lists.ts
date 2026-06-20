@@ -80,8 +80,11 @@ export function registerListRoutes(fastify: FastifyInstance, ctx: AdapterContext
     );
 
     app.delete("/api/lists/:id", { schema: { params: IdParam } }, async (req, reply) => {
-      await ensureListExists(req.params.id, currentUserId(req));
-      await prisma.list.delete({ where: { id: req.params.id } });
+      // Scoped deleteMany: existence + ownership + delete in one query (no race).
+      const { count } = await prisma.list.deleteMany({
+        where: { id: req.params.id, userId: currentUserId(req) },
+      });
+      if (count === 0) throw new AppError(404, "List not found");
       return reply.code(204).send();
     });
 
@@ -102,12 +105,10 @@ export function registerListRoutes(fastify: FastifyInstance, ctx: AdapterContext
       "/api/lists/:id/items/:itemId",
       { schema: { params: ItemParams } },
       async (req, reply) => {
-        await ensureListExists(req.params.id, currentUserId(req));
-        const item = await prisma.listItem.findFirst({
-          where: { id: req.params.itemId, listId: req.params.id },
+        const { count } = await prisma.listItem.deleteMany({
+          where: { id: req.params.itemId, listId: req.params.id, list: { userId: currentUserId(req) } },
         });
-        if (!item) throw new AppError(404, "Item not found");
-        await prisma.listItem.delete({ where: { id: item.id } });
+        if (count === 0) throw new AppError(404, "Item not found");
         return reply.code(204).send();
       },
     );

@@ -96,11 +96,10 @@ export function registerNotificationRoutes(
     );
 
     app.delete("/api/alerts/:alertId", { schema: { params: AlertParams } }, async (req, reply) => {
-      const alert = await prisma.alert.findFirst({
+      const { count } = await prisma.alert.deleteMany({
         where: { id: req.params.alertId, userId: currentUserId(req) },
       });
-      if (!alert) throw new AppError(404, "Alert not found");
-      await prisma.alert.delete({ where: { id: alert.id } });
+      if (count === 0) throw new AppError(404, "Alert not found");
       return reply.code(204).send();
     });
   });

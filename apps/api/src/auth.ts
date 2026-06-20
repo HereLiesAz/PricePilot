@@ -1,25 +1,32 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fastifyJwt from "@fastify/jwt";
 import type { UserDTO } from "@pricepilot/shared";
 import type { Prisma } from "@pricepilot/db";
 import { AppError } from "./errors.js";
 
-// --- Password hashing (scrypt, no external deps) -------------------------
+// --- Password hashing (async scrypt, no external deps) -------------------
+// Async so the hash never blocks the event loop under concurrent auth load.
 
-export function hashPassword(password: string): string {
+const scryptAsync = promisify(scrypt);
+
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, 64);
+  const hash = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${salt.toString("hex")}:${hash.toString("hex")}`;
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [saltHex, hashHex] = stored.split(":");
   if (!saltHex || !hashHex) return false;
   const expected = Buffer.from(hashHex, "hex");
-  const actual = scryptSync(password, Buffer.from(saltHex, "hex"), 64);
+  const actual = (await scryptAsync(password, Buffer.from(saltHex, "hex"), 64)) as Buffer;
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
+
+/** Well-formed throwaway hash for constant-time login on unknown emails. */
+export const DUMMY_PASSWORD_HASH = `${"0".repeat(32)}:${"0".repeat(128)}`;
 
 export function toUserDTO(user: Prisma.UserGetPayload<object>): UserDTO {
   return { id: user.id, email: user.email, name: user.name };

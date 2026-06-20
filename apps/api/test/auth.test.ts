@@ -6,10 +6,10 @@ import { prisma } from "../src/db.js";
 import { hashPassword, verifyPassword } from "../src/auth.js";
 
 describe("password hashing", () => {
-  it("verifies a correct password and rejects a wrong one", () => {
-    const stored = hashPassword("correct horse");
-    expect(verifyPassword("correct horse", stored)).toBe(true);
-    expect(verifyPassword("Tr0ub4dor", stored)).toBe(false);
+  it("verifies a correct password and rejects a wrong one", async () => {
+    const stored = await hashPassword("correct horse");
+    expect(await verifyPassword("correct horse", stored)).toBe(true);
+    expect(await verifyPassword("Tr0ub4dor", stored)).toBe(false);
   });
 });
 
