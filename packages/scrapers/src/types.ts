@@ -50,6 +50,11 @@ export interface AdapterContext {
    * stays free of the Anthropic SDK.
    */
   claudeFallback?: (input: { html: string; url: string }) => Promise<ExtractedProduct | null>;
+  /**
+   * Optional headless renderer override (tests). Defaults to the Playwright
+   * adapter's launch-and-render. Returns the rendered HTML for a URL.
+   */
+  renderImpl?: (url: string) => Promise<string>;
 }
 
 export interface VendorAdapter {

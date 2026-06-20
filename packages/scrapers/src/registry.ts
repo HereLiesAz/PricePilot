@@ -3,8 +3,9 @@ import { ExtractionError, type AdapterContext, type VendorAdapter } from "./type
 import { vendorDomain } from "./fetch.js";
 import { ebayAdapter } from "./adapters/ebay.js";
 import { bestBuyAdapter } from "./adapters/bestbuy.js";
+import { extractFromHtml } from "./extract/structured.js";
 import { structuredDataAdapter } from "./adapters/structured-data.js";
-import { playwrightAdapter } from "./adapters/playwright.js";
+import { playwrightAdapter, playwrightAvailable, renderHtml } from "./adapters/playwright.js";
 import { claudeAdapter } from "./adapters/claude.js";
 import { amazonAdapter } from "./adapters/amazon.js";
 
@@ -40,9 +41,10 @@ export function resolveAdapter(url: string, ctx: AdapterContext): VendorAdapter 
 }
 
 /**
- * Orchestrate extraction across tiers: primary adapter first; if it finds no
- * product data and Playwright is enabled, fall back to the headless tier.
- * Enforces the opt-in/off-by-default Amazon policy.
+ * Orchestrate extraction across tiers: primary adapter first; on no-data /
+ * fetch-failed, escalate to the headless tier, then Claude. The headless tier's
+ * rendered HTML is reused for the Claude tier so it doesn't re-fetch (and
+ * re-fail) on anti-bot pages. Enforces the opt-in/off-by-default Amazon policy.
  */
 export async function extractOffer(url: string, ctx: AdapterContext): Promise<ExtractedProduct> {
   const domain = vendorDomain(url);
@@ -64,14 +66,43 @@ export async function extractOffer(url: string, ctx: AdapterContext): Promise<Ex
       (err.code === "no_product_data" || err.code === "fetch_failed");
     if (!shouldFallback) throw err;
 
-    for (const fb of fallbackAdapters) {
-      if (fb.tier === primary.tier || !fb.isAvailable(ctx)) continue;
+    const canClaude = typeof ctx.claudeFallback === "function";
+
+    // Tier 3 (headless) — render once and reuse the HTML for tier 4 (Claude).
+    // The render is isolated from the Claude call: a render failure should fall
+    // through to a plain-fetch Claude attempt, but once we've rendered, Claude
+    // works off that HTML and we must NOT re-fetch (the whole point).
+    if (primary.tier !== "headless" && playwrightAvailable(ctx)) {
+      let html: string | undefined;
       try {
-        return await fb.extract(url, ctx);
+        html = await renderHtml(url, ctx);
       } catch {
-        // Try the next fallback tier; surface the original error if all fail.
+        html = undefined; // rendering failed — leave Claude's plain fetch below
+      }
+      if (html !== undefined) {
+        const viaStructured = extractFromHtml(html, "headless");
+        if (viaStructured) return viaStructured;
+        if (canClaude) {
+          try {
+            const viaClaude = await ctx.claudeFallback!({ html, url });
+            if (viaClaude) return viaClaude;
+          } catch {
+            // Claude failed on the rendered HTML — don't re-fetch a blocked page.
+          }
+          throw err;
+        }
       }
     }
+
+    // Tier 4 standalone: Claude over a plain fetch (no headless, or it failed).
+    if (canClaude) {
+      try {
+        return await claudeAdapter.extract(url, ctx);
+      } catch {
+        // Surface the original error below.
+      }
+    }
+
     throw err;
   }
 }
