@@ -67,27 +67,35 @@ export async function extractOffer(url: string, ctx: AdapterContext): Promise<Ex
     if (!shouldFallback) throw err;
 
     const canClaude = typeof ctx.claudeFallback === "function";
-    let claudeTriedOnRendered = false;
 
     // Tier 3 (headless) — render once and reuse the HTML for tier 4 (Claude).
+    // The render is isolated from the Claude call: a render failure should fall
+    // through to a plain-fetch Claude attempt, but once we've rendered, Claude
+    // works off that HTML and we must NOT re-fetch (the whole point).
     if (primary.tier !== "headless" && playwrightAvailable(ctx)) {
+      let html: string | undefined;
       try {
-        const html = await renderHtml(url, ctx);
+        html = await renderHtml(url, ctx);
+      } catch {
+        html = undefined; // rendering failed — leave Claude's plain fetch below
+      }
+      if (html !== undefined) {
         const viaStructured = extractFromHtml(html, "headless");
         if (viaStructured) return viaStructured;
         if (canClaude) {
-          claudeTriedOnRendered = true;
-          const viaClaude = await ctx.claudeFallback!({ html, url });
-          if (viaClaude) return viaClaude;
+          try {
+            const viaClaude = await ctx.claudeFallback!({ html, url });
+            if (viaClaude) return viaClaude;
+          } catch {
+            // Claude failed on the rendered HTML — don't re-fetch a blocked page.
+          }
+          throw err;
         }
-      } catch {
-        // Render failed before Claude ran — fall through to a plain-fetch Claude.
-        claudeTriedOnRendered = false;
       }
     }
 
     // Tier 4 standalone: Claude over a plain fetch (no headless, or it failed).
-    if (canClaude && !claudeTriedOnRendered) {
+    if (canClaude) {
       try {
         return await claudeAdapter.extract(url, ctx);
       } catch {

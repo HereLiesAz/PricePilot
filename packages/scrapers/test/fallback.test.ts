@@ -59,6 +59,22 @@ describe("headless → Claude fallback with shared HTML", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("does not re-fetch when Claude throws on the rendered HTML", async () => {
+    const fetchImpl = vi.fn(async () => new Response("BLOCKED", { status: 403 }));
+    const ctx = baseCtx({
+      fetchImpl, // primary fails with fetch_failed (403)
+      renderImpl: async () => "<html><body>rendered, no product</body></html>",
+      claudeFallback: async () => {
+        throw new Error("claude exploded");
+      },
+    });
+    // Surfaces the original extraction error; must not retry a plain fetch.
+    await expect(extractOffer("https://shop.example/p", ctx)).rejects.toMatchObject({
+      code: "fetch_failed",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("falls back to a plain-fetch Claude when headless rendering fails", async () => {
     const ctx = baseCtx({
       fetchImpl: async () => new Response("<html><title>blocked</title></html>", { status: 200 }),
