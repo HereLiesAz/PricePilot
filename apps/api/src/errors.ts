@@ -17,6 +17,8 @@ export function extractionStatus(code: ExtractionError["code"]): number {
   switch (code) {
     case "bad_url":
       return 400;
+    case "robots_disallowed":
+      return 403;
     case "amazon_disabled":
     case "no_product_data":
     case "adapter_unavailable":

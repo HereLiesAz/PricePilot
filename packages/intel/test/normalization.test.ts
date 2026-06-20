@@ -5,6 +5,7 @@ import {
   landedPrice,
   parseQuantity,
   refreshRates,
+  resetRates,
   unitPrice,
 } from "../src/normalization.js";
 
@@ -37,10 +38,15 @@ describe("refreshRates", () => {
     // convertCurrency now uses the refreshed cache by default.
     expect(convertCurrency(0.5, "EUR", "USD")).toBe(1);
 
-    // A failing refresh keeps the previous cache.
+    // A failing refresh throws and leaves the previous cache intact.
     const failing = (async () => new Response("nope", { status: 500 })) as unknown as typeof fetch;
-    await refreshRates({ fetchImpl: failing, ttlMs: 0, url: "https://fx.test" });
+    await expect(
+      refreshRates({ fetchImpl: failing, ttlMs: 0, url: "https://fx.test" }),
+    ).rejects.toThrow();
     expect(getRates().EUR).toBe(0.5);
+
+    resetRates(); // restore the seed table for other tests
+    expect(getRates().EUR).toBe(0.92);
   });
 });
 

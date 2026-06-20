@@ -29,6 +29,12 @@ export function getRates(): Record<string, number> {
   return liveRates;
 }
 
+/** Reset the FX cache to the seed table (test isolation). */
+export function resetRates(): void {
+  liveRates = { ...DEFAULT_RATES };
+  lastRefresh = 0;
+}
+
 interface ErApiResponse {
   result?: string;
   rates?: Record<string, number>;
@@ -40,12 +46,16 @@ export interface RefreshRatesOptions {
   url?: string;
   /** Skip the network call if the cache is newer than this (default 12h). */
   ttlMs?: number;
+  /** Abort the fetch after this long (default 10s). */
+  timeoutMs?: number;
 }
 
 /**
  * Refresh the FX cache from a free USD-base feed (open.er-api.com by default).
- * Best-effort: on any failure or malformed payload it keeps the existing cache,
- * so currency normalization degrades to the seed table rather than breaking.
+ * New rates are **merged** into the cache (a partial response never wipes
+ * known currencies). Throws on network/HTTP/format failure so the caller can
+ * log it — the cache is left untouched, so `convertCurrency` keeps degrading
+ * to the last-known (or seed) rates.
  */
 export async function refreshRates(opts: RefreshRatesOptions = {}): Promise<Record<string, number>> {
   const ttl = opts.ttlMs ?? 12 * 60 * 60_000;
@@ -53,24 +63,26 @@ export async function refreshRates(opts: RefreshRatesOptions = {}): Promise<Reco
 
   const doFetch = opts.fetchImpl ?? fetch;
   const url = opts.url ?? "https://open.er-api.com/v6/latest/USD";
-  try {
-    const res = await doFetch(url);
-    if (!res.ok) return liveRates;
-    const json = (await res.json()) as ErApiResponse;
-    const rates = json.rates;
-    if (rates && typeof rates === "object") {
-      const next: Record<string, number> = { USD: 1 };
-      for (const [code, value] of Object.entries(rates)) {
-        if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-          next[code.toUpperCase()] = value;
-        }
-      }
-      liveRates = next;
-      lastRefresh = Date.now();
-    }
-  } catch {
-    // Keep the existing cache.
+
+  const res = await doFetch(url, { signal: AbortSignal.timeout(opts.timeoutMs ?? 10_000) });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch FX rates: ${res.status} ${res.statusText}`);
   }
+  const json = (await res.json()) as ErApiResponse | null;
+  const rates = json?.rates;
+  if (!rates || typeof rates !== "object") {
+    throw new Error("Invalid FX rates response format");
+  }
+
+  const next: Record<string, number> = { ...liveRates };
+  for (const [code, value] of Object.entries(rates)) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      next[code.toUpperCase()] = value;
+    }
+  }
+  next.USD = 1;
+  liveRates = next;
+  lastRefresh = Date.now();
   return liveRates;
 }
 

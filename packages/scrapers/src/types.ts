@@ -12,7 +12,8 @@ export type ExtractionErrorCode =
   | "fetch_failed"
   | "no_product_data"
   | "bad_url"
-  | "adapter_unavailable";
+  | "adapter_unavailable"
+  | "robots_disallowed";
 
 export class ExtractionError extends Error {
   constructor(
@@ -55,6 +56,12 @@ export interface AdapterContext {
    * adapter's launch-and-render. Returns the rendered HTML for a URL.
    */
   renderImpl?: (url: string) => Promise<string>;
+  /** Politeness (PLAN.md): honor robots.txt on page fetches when true. */
+  respectRobots?: boolean;
+  /** Minimum spacing between page fetches to the same host (ms). 0 disables. */
+  minRequestIntervalMs?: number;
+  /** Random extra delay added on top of the per-host interval (ms). */
+  requestJitterMs?: number;
 }
 
 export interface VendorAdapter {

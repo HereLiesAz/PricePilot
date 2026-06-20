@@ -23,6 +23,9 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
         DATABASE_URL: process.env.DATABASE_URL,
         ENABLE_AMAZON_ADAPTER: false,
         ENABLE_PLAYWRIGHT: false,
+        RESPECT_ROBOTS: false,
+        REQUEST_INTERVAL_MS: 0,
+        REQUEST_JITTER_MS: 0,
       },
     });
     await app.ready();
