@@ -10,7 +10,7 @@ export function landedPrice(price: number, shipping = 0, taxRate = 0): number {
   return Math.round((price + shipping) * (1 + taxRate) * 100) / 100;
 }
 
-/** Approximate FX rates as units-per-USD. Replace with a live feed in prod. */
+/** Seed FX rates (units-per-USD) used until a live refresh succeeds. */
 export const DEFAULT_RATES: Record<string, number> = {
   USD: 1,
   EUR: 0.92,
@@ -20,16 +20,82 @@ export const DEFAULT_RATES: Record<string, number> = {
   JPY: 156,
 };
 
+// Live rates cache, seeded with the static table and refreshed best-effort.
+let liveRates: Record<string, number> = { ...DEFAULT_RATES };
+let lastRefresh = 0;
+
+/** Current FX rates (units-per-USD): live values when refreshed, else the seed. */
+export function getRates(): Record<string, number> {
+  return liveRates;
+}
+
+/** Reset the FX cache to the seed table (test isolation). */
+export function resetRates(): void {
+  liveRates = { ...DEFAULT_RATES };
+  lastRefresh = 0;
+}
+
+interface ErApiResponse {
+  result?: string;
+  rates?: Record<string, number>;
+}
+
+export interface RefreshRatesOptions {
+  fetchImpl?: typeof fetch;
+  /** USD-base FX endpoint returning `{ rates: { ISO: perUsd } }`. */
+  url?: string;
+  /** Skip the network call if the cache is newer than this (default 12h). */
+  ttlMs?: number;
+  /** Abort the fetch after this long (default 10s). */
+  timeoutMs?: number;
+}
+
+/**
+ * Refresh the FX cache from a free USD-base feed (open.er-api.com by default).
+ * New rates are **merged** into the cache (a partial response never wipes
+ * known currencies). Throws on network/HTTP/format failure so the caller can
+ * log it — the cache is left untouched, so `convertCurrency` keeps degrading
+ * to the last-known (or seed) rates.
+ */
+export async function refreshRates(opts: RefreshRatesOptions = {}): Promise<Record<string, number>> {
+  const ttl = opts.ttlMs ?? 12 * 60 * 60_000;
+  if (lastRefresh !== 0 && Date.now() - lastRefresh < ttl) return liveRates;
+
+  const doFetch = opts.fetchImpl ?? fetch;
+  const url = opts.url ?? "https://open.er-api.com/v6/latest/USD";
+
+  const res = await doFetch(url, { signal: AbortSignal.timeout(opts.timeoutMs ?? 10_000) });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch FX rates: ${res.status} ${res.statusText}`);
+  }
+  const json = (await res.json()) as ErApiResponse | null;
+  const rates = json?.rates;
+  if (!rates || typeof rates !== "object") {
+    throw new Error("Invalid FX rates response format");
+  }
+
+  const next: Record<string, number> = { ...liveRates };
+  for (const [code, value] of Object.entries(rates)) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      next[code.toUpperCase()] = value;
+    }
+  }
+  next.USD = 1;
+  liveRates = next;
+  lastRefresh = Date.now();
+  return liveRates;
+}
+
 /**
  * Convert `amount` from one ISO currency to another using a units-per-base rate
- * table. Returns null if either currency is unknown (caller can fall back to a
- * raw compare).
+ * table (defaults to the live FX cache). Returns null if either currency is
+ * unknown (caller can fall back to a raw compare).
  */
 export function convertCurrency(
   amount: number,
   from: string,
   to: string,
-  rates: Record<string, number> = DEFAULT_RATES,
+  rates: Record<string, number> = getRates(),
 ): number | null {
   const fromUpper = from.toUpperCase();
   const toUpper = to.toUpperCase();

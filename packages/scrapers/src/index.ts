@@ -6,6 +6,7 @@ export { playwrightAdapter } from "./adapters/playwright.js";
 export { claudeAdapter } from "./adapters/claude.js";
 export { amazonAdapter } from "./adapters/amazon.js";
 export { parseWishlist } from "./wishlist.js";
+export { parseRobots, isPathAllowed, RateLimiter } from "./politeness.js";
 export { ebayAdapter, mapEbayItem, ebayLegacyId } from "./adapters/ebay.js";
 export { bestBuyAdapter, mapBestBuyProduct, bestBuySku } from "./adapters/bestbuy.js";
 export {

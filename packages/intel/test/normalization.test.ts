@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   convertCurrency,
+  getRates,
   landedPrice,
   parseQuantity,
+  refreshRates,
+  resetRates,
   unitPrice,
 } from "../src/normalization.js";
 
@@ -20,6 +23,30 @@ describe("convertCurrency", () => {
   });
   it("returns null for unknown currencies", () => {
     expect(convertCurrency(100, "USD", "ZZZ")).toBeNull();
+  });
+});
+
+describe("refreshRates", () => {
+  it("updates the live cache from a USD-base feed and keeps it on failure", async () => {
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ result: "success", rates: { USD: 1, EUR: 0.5, GBP: 0.8 } }), {
+        status: 200,
+      })) as unknown as typeof fetch;
+    const rates = await refreshRates({ fetchImpl, ttlMs: 0, url: "https://fx.test" });
+    expect(rates.EUR).toBe(0.5);
+    expect(getRates().EUR).toBe(0.5);
+    // convertCurrency now uses the refreshed cache by default.
+    expect(convertCurrency(0.5, "EUR", "USD")).toBe(1);
+
+    // A failing refresh throws and leaves the previous cache intact.
+    const failing = (async () => new Response("nope", { status: 500 })) as unknown as typeof fetch;
+    await expect(
+      refreshRates({ fetchImpl: failing, ttlMs: 0, url: "https://fx.test" }),
+    ).rejects.toThrow();
+    expect(getRates().EUR).toBe(0.5);
+
+    resetRates(); // restore the seed table for other tests
+    expect(getRates().EUR).toBe(0.92);
   });
 });
 

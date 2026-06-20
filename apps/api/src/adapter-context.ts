@@ -19,5 +19,8 @@ export function adapterContext(env: Env): AdapterContext {
       bestBuyApiKey: env.BESTBUY_API_KEY,
     },
     claudeFallback,
+    respectRobots: env.RESPECT_ROBOTS,
+    minRequestIntervalMs: env.REQUEST_INTERVAL_MS,
+    requestJitterMs: env.REQUEST_JITTER_MS,
   };
 }

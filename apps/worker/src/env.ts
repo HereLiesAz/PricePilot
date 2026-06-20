@@ -20,6 +20,9 @@ const EnvSchema = z.object({
   PLAYWRIGHT_EXECUTABLE_PATH: z.string().optional(),
   EBAY_OAUTH_TOKEN: z.string().optional(),
   BESTBUY_API_KEY: z.string().optional(),
+  RESPECT_ROBOTS: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
+  REQUEST_INTERVAL_MS: z.coerce.number().int().nonnegative().default(1000),
+  REQUEST_JITTER_MS: z.coerce.number().int().nonnegative().default(500),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -43,5 +46,8 @@ export function adapterContext(env: Env): AdapterContext {
       ebayOAuthToken: env.EBAY_OAUTH_TOKEN,
       bestBuyApiKey: env.BESTBUY_API_KEY,
     },
+    respectRobots: env.RESPECT_ROBOTS,
+    minRequestIntervalMs: env.REQUEST_INTERVAL_MS,
+    requestJitterMs: env.REQUEST_JITTER_MS,
   };
 }

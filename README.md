@@ -37,8 +37,11 @@ infra/        docker-compose (Postgres + Redis)
 ```
 
 `packages/intel` holds the pure heuristics (title normalization + Sørensen–Dice
-matching, deal scoring) plus the Claude-backed extraction fallback and match
-tie-break (prompt-cached, structured tool output; gated on `ANTHROPIC_API_KEY`).
+matching, deal scoring, price normalization) plus the Claude-backed extraction
+fallback and match tie-break (prompt-cached, structured tool output; gated on
+`ANTHROPIC_API_KEY`). Currency normalization uses **live FX rates** (refreshed
+from a free USD-base feed on API start and every 12h) with the static table as a
+best-effort fallback.
 
 ### Watcher (`apps/worker`)
 
