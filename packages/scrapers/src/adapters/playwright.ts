@@ -16,7 +16,7 @@ export const playwrightAdapter: VendorAdapter = {
   tier: "headless",
   capabilities: ["headless", "js-render"],
   canHandle: (url) => url.protocol === "http:" || url.protocol === "https:",
-  isAvailable: (ctx) => ctx.enablePlaywright,
+  isAvailable: playwrightAvailable,
   async extract(url: string, ctx: AdapterContext): Promise<ExtractedProduct> {
     const html = await renderHtml(url, ctx);
     const extracted = extractFromHtml(html, "headless");
@@ -30,7 +30,19 @@ export const playwrightAdapter: VendorAdapter = {
   },
 };
 
-async function renderHtml(url: string, ctx: AdapterContext): Promise<string> {
+/** Whether the headless tier can render (Playwright enabled, or a test override). */
+export function playwrightAvailable(ctx: AdapterContext): boolean {
+  return ctx.enablePlaywright || typeof ctx.renderImpl === "function";
+}
+
+/**
+ * Render a URL to HTML. Uses `ctx.renderImpl` when provided (tests), otherwise
+ * launches a headless browser via playwright-core. Exported so the registry can
+ * reuse the rendered HTML for the Claude tier instead of re-fetching.
+ */
+export async function renderHtml(url: string, ctx: AdapterContext): Promise<string> {
+  if (ctx.renderImpl) return ctx.renderImpl(url);
+
   let chromium: typeof import("playwright-core").chromium;
   try {
     ({ chromium } = await import("playwright-core"));

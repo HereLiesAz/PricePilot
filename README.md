@@ -126,8 +126,9 @@ The PWA talks only to our own API; all vendor fetching is server-side.
 The price-history response includes a **deal score** (great / good / normal /
 above-typical + percentile). Add-by-URL escalates through the adapter tiers and,
 when `ANTHROPIC_API_KEY` is set, falls back to **Claude extraction** for pages
-the cheaper tiers can't parse; cross-vendor product grouping uses GTIN/MPN then
-fuzzy title, with a Claude tie-break for ambiguous matches.
+the cheaper tiers can't parse — reusing the headless tier's rendered HTML so
+Claude doesn't re-fetch a blocked page. Cross-vendor product grouping uses
+GTIN/MPN then fuzzy title, with a Claude tie-break for ambiguous matches.
 
 Add-by-URL runs through the tiered adapters in `packages/scrapers` (official API
 → structured data → headless). Amazon URLs are rejected unless
