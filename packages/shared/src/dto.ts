@@ -177,6 +177,34 @@ export const PriceHistoryDTO = z.object({
 });
 export type PriceHistoryDTO = z.infer<typeof PriceHistoryDTO>;
 
+// --- Auth ----------------------------------------------------------------
+
+export const UserDTO = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string().nullable(),
+});
+export type UserDTO = z.infer<typeof UserDTO>;
+
+export const RegisterInput = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(200),
+  name: z.string().min(1).max(120).optional(),
+});
+export type RegisterInput = z.infer<typeof RegisterInput>;
+
+export const LoginInput = z.object({
+  email: z.string().email(),
+  password: z.string().min(1).max(200),
+});
+export type LoginInput = z.infer<typeof LoginInput>;
+
+export const AuthResponse = z.object({
+  token: z.string(),
+  user: UserDTO,
+});
+export type AuthResponse = z.infer<typeof AuthResponse>;
+
 // --- Alerts --------------------------------------------------------------
 
 export const AlertDTO = z.object({

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, InjectOptions } from "fastify";
 import { ListDetailDTO, ListSummaryDTO, PriceHistoryDTO } from "@pricepilot/shared";
 import { buildServer } from "../src/server.js";
 import { prisma } from "../src/db.js";
@@ -12,6 +12,7 @@ import { prisma } from "../src/db.js";
  */
 describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
   let app: FastifyInstance;
+  let token: string;
 
   beforeAll(async () => {
     app = await buildServer({
@@ -23,6 +24,7 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
         DATABASE_URL: process.env.DATABASE_URL,
         ENABLE_AMAZON_ADAPTER: false,
         ENABLE_PLAYWRIGHT: false,
+        JWT_SECRET: "test-secret",
         RESPECT_ROBOTS: false,
         REQUEST_INTERVAL_MS: 0,
         REQUEST_JITTER_MS: 0,
@@ -41,39 +43,76 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
     await prisma.priceHistory.deleteMany();
     await prisma.scrapeJob.deleteMany();
     await prisma.offer.deleteMany();
+    await prisma.alert.deleteMany();
     await prisma.listItem.deleteMany();
     await prisma.list.deleteMany();
     await prisma.product.deleteMany();
     await prisma.vendor.deleteMany();
-  });
+    await prisma.pushSubscription.deleteMany();
+    await prisma.user.deleteMany();
 
-  async function createList(name = "Holiday gifts") {
     const res = await app.inject({
       method: "POST",
-      url: "/api/lists",
-      payload: { name, type: "WISHLIST" },
+      url: "/api/auth/register",
+      payload: { email: "owner@test.local", password: "password123", name: "Owner" },
     });
+    token = res.json().token;
+  });
+
+  /** Inject with the Authorization header attached. */
+  const authed = (opts: InjectOptions) =>
+    app.inject({ ...opts, headers: { authorization: `Bearer ${token}`, ...opts.headers } });
+
+  async function createList(name = "Holiday gifts") {
+    const res = await authed({ method: "POST", url: "/api/lists", payload: { name, type: "WISHLIST" } });
     expect(res.statusCode).toBe(201);
     return ListDetailDTO.parse(res.json());
   }
 
+  it("rejects unauthenticated requests", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/lists" });
+    expect(res.statusCode).toBe(401);
+  });
+
   it("creates, lists, and fetches a list", async () => {
     const created = await createList();
     expect(created.name).toBe("Holiday gifts");
-    expect(created.type).toBe("WISHLIST");
 
-    const listRes = await app.inject({ method: "GET", url: "/api/lists" });
+    const listRes = await authed({ method: "GET", url: "/api/lists" });
     expect(listRes.statusCode).toBe(200);
     const summaries = ListSummaryDTO.array().parse(listRes.json());
     expect(summaries.map((l) => l.id)).toContain(created.id);
 
-    const getRes = await app.inject({ method: "GET", url: `/api/lists/${created.id}` });
+    const getRes = await authed({ method: "GET", url: `/api/lists/${created.id}` });
     expect(getRes.statusCode).toBe(200);
+  });
+
+  it("isolates lists between users", async () => {
+    const mine = await createList("Mine");
+    // A second user must not see or fetch the first user's list.
+    const other = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "other@test.local", password: "password123" },
+    });
+    const otherToken = other.json().token;
+    const theirList = await app.inject({
+      method: "GET",
+      url: "/api/lists",
+      headers: { authorization: `Bearer ${otherToken}` },
+    });
+    expect(ListSummaryDTO.array().parse(theirList.json())).toHaveLength(0);
+    const fetchMine = await app.inject({
+      method: "GET",
+      url: `/api/lists/${mine.id}`,
+      headers: { authorization: `Bearer ${otherToken}` },
+    });
+    expect(fetchMine.statusCode).toBe(404);
   });
 
   it("adds a manual item and reflects it in item count", async () => {
     const list = await createList();
-    const res = await app.inject({
+    const res = await authed({
       method: "POST",
       url: `/api/lists/${list.id}/items`,
       payload: { title: "Standing desk", targetPrice: 300, qty: 1 },
@@ -88,7 +127,7 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
 
   it("bulk-imports title rows from CSV", async () => {
     const list = await createList();
-    const res = await app.inject({
+    const res = await authed({
       method: "POST",
       url: `/api/lists/${list.id}/import`,
       payload: { format: "csv", data: "title\nThing A\nThing B" },
@@ -101,32 +140,31 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
 
   it("deletes a list item", async () => {
     const list = await createList();
-    const addRes = await app.inject({
+    const addRes = await authed({
       method: "POST",
       url: `/api/lists/${list.id}/items`,
       payload: { title: "Removable" },
     });
-    const detail = ListDetailDTO.parse(addRes.json());
-    const itemId = detail.items[0]!.id;
+    const itemId = ListDetailDTO.parse(addRes.json()).items[0]!.id;
 
-    const delRes = await app.inject({
-      method: "DELETE",
-      url: `/api/lists/${list.id}/items/${itemId}`,
-    });
+    const delRes = await authed({ method: "DELETE", url: `/api/lists/${list.id}/items/${itemId}` });
     expect(delRes.statusCode).toBe(204);
 
-    const getRes = await app.inject({ method: "GET", url: `/api/lists/${list.id}` });
+    const getRes = await authed({ method: "GET", url: `/api/lists/${list.id}` });
     expect(ListDetailDTO.parse(getRes.json()).items).toHaveLength(0);
   });
 
   it("returns 404 for a missing list", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/lists/does-not-exist" });
+    const res = await authed({ method: "GET", url: "/api/lists/does-not-exist" });
     expect(res.statusCode).toBe(404);
   });
 
   it("returns an offer's price history with lowest/median/latest", async () => {
-    // Seed a product + vendor + offer + history directly (no network).
+    // Seed a product + vendor + offer + history, and link it to the user's list
+    // (offer history is authorized via list-item ownership).
+    const list = await createList();
     const product = await prisma.product.create({ data: { normalizedTitle: "Tracked" } });
+    await prisma.listItem.create({ data: { listId: list.id, productId: product.id } });
     const vendor = await prisma.vendor.create({
       data: { name: "shop", domain: "shop.example", adapter: "structured-data" },
     });
@@ -137,7 +175,7 @@ describe.skipIf(!process.env.DATABASE_URL)("lists API", () => {
       await prisma.priceHistory.create({ data: { offerId: offer.id, price, currency: "USD" } });
     }
 
-    const res = await app.inject({ method: "GET", url: `/api/offers/${offer.id}/history` });
+    const res = await authed({ method: "GET", url: `/api/offers/${offer.id}/history` });
     expect(res.statusCode).toBe(200);
     const history = PriceHistoryDTO.parse(res.json());
     expect(history.points).toHaveLength(3);

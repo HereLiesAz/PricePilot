@@ -15,6 +15,7 @@ describe("GET /health", () => {
         CORS_ORIGIN: "http://localhost:5173",
         ENABLE_AMAZON_ADAPTER: false,
         ENABLE_PLAYWRIGHT: false,
+        JWT_SECRET: "test-secret",
         RESPECT_ROBOTS: false,
         REQUEST_INTERVAL_MS: 0,
         REQUEST_JITTER_MS: 0,

@@ -1,10 +1,11 @@
-import { Moon, Plane, Sun } from "lucide-react";
+import { LogOut, Moon, Plane, Sun } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ApiStatusBadge } from "@/components/ApiStatusBadge";
 import { EnableAlertsButton } from "@/components/EnableAlertsButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -16,6 +17,8 @@ const navItems = [
 export function Layout() {
   const theme = useAppStore((s) => s.theme);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.clear);
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -55,6 +58,14 @@ export function Layout() {
               aria-label="Toggle theme"
             >
               {theme === "dark" ? <Sun aria-hidden /> : <Moon aria-hidden />}
+            </Button>
+            {user && (
+              <span className="hidden text-sm text-[var(--color-muted-foreground)] sm:inline">
+                {user.email}
+              </span>
+            )}
+            <Button variant="ghost" size="icon" onClick={logout} aria-label="Sign out">
+              <LogOut aria-hidden />
             </Button>
           </div>
         </div>

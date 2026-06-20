@@ -106,9 +106,15 @@ The web app calls `GET /health`, validates the response against the shared
 
 The PWA talks only to our own API; all vendor fetching is server-side.
 
+All `/api/*` routes require a `Bearer` JWT except `/health` and `/api/auth/*`.
+Sign up or sign in to get a token (the web app stores it and attaches it
+automatically); data is isolated per user.
+
 | Method & path                          | Purpose                                            |
 | -------------------------------------- | -------------------------------------------------- |
 | `GET /health`                          | Liveness + version (shared `HealthResponse`)       |
+| `POST /api/auth/register · login`      | Create an account / sign in → `{ token, user }`    |
+| `GET /api/auth/me`                     | Current user (requires token)                      |
 | `GET /api/lists`                       | List summaries (with item counts)                  |
 | `POST /api/lists`                      | Create a list (`SHOPPING` \| `WISHLIST`)           |
 | `GET /api/lists/:id`                   | List detail with items, products, and best offer   |

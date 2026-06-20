@@ -8,7 +8,9 @@ import {
 import { HealthResponse } from "@pricepilot/shared";
 import { corsOrigins, loadEnv, type Env } from "./env.js";
 import { adapterContext } from "./adapter-context.js";
+import { registerAuth } from "./auth.js";
 import { registerErrorHandler } from "./errors.js";
+import { registerAuthRoutes } from "./routes/auth.js";
 import { registerListRoutes } from "./routes/lists.js";
 import { registerNotificationRoutes } from "./routes/notifications.js";
 
@@ -42,6 +44,9 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
     credentials: true,
   });
 
+  // JWT auth (must register before routes that use the `authenticate` hook).
+  await registerAuth(app, env.JWT_SECRET);
+
   app.route({
     method: "GET",
     url: "/health",
@@ -58,6 +63,9 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
       };
     },
   });
+
+  // Auth (register / login / me) — public except `me`.
+  registerAuthRoutes(app);
 
   // List/item CRUD, import, price refresh, and history — backed by the tiered
   // vendor adapters in @pricepilot/scrapers.
