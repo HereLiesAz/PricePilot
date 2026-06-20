@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   // Intelligence layer (Claude extraction fallback + match tie-break).
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().optional(),
+  // JWT signing secret. Override in production.
+  JWT_SECRET: z.string().min(1).default("dev-insecure-secret-change-me"),
   // Scraping politeness: honor robots.txt and space requests per host.
   RESPECT_ROBOTS: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   REQUEST_INTERVAL_MS: z.coerce.number().int().nonnegative().default(1000),

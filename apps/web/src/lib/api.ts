@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   AlertDTO,
+  AuthResponse,
   HealthResponse,
   ImportResultDTO,
   ListDetailDTO,
@@ -8,13 +9,17 @@ import {
   OfferDTO,
   PriceHistoryDTO,
   SearchResultDTO,
+  UserDTO,
   VapidKeyDTO,
   type AddItemInput,
   type CreateAlertInput,
   type CreateListInput,
   type ImportInput,
+  type LoginInput,
   type PushSubscriptionInput,
+  type RegisterInput,
 } from "@pricepilot/shared";
+import { useAuthStore } from "@/store/useAuthStore";
 
 /**
  * Base URL of the PricePilot API. The PWA talks only to our own API
@@ -37,30 +42,36 @@ export class ApiError extends Error {
  * Typed fetch helper: validates the response against a zod schema and surfaces
  * the API's error message on non-2xx responses.
  */
+/** Build request headers, attaching the bearer token when authenticated. */
+function authHeaders(extra?: HeadersInit): HeadersInit {
+  const token = useAuthStore.getState().token;
+  return {
+    "content-type": "application/json",
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
 async function request<T>(
   path: string,
   schema: z.ZodType<T>,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { "content-type": "application/json", ...init?.headers },
-  });
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers: authHeaders(init?.headers) });
   await throwIfNotOk(res);
   return schema.parse(await res.json());
 }
 
 /** Like `request`, for endpoints that return no body (204 No Content). */
 async function requestVoid(path: string, init?: RequestInit): Promise<void> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { "content-type": "application/json", ...init?.headers },
-  });
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers: authHeaders(init?.headers) });
   await throwIfNotOk(res);
 }
 
 async function throwIfNotOk(res: Response): Promise<void> {
   if (res.ok) return;
+  // Drop a stale/invalid session so the UI returns to the login screen.
+  if (res.status === 401) useAuthStore.getState().clear();
   let message = `${res.status} ${res.statusText}`;
   try {
     const body = (await res.json()) as { message?: string };
@@ -70,6 +81,16 @@ async function throwIfNotOk(res: Response): Promise<void> {
   }
   throw new ApiError(res.status, message);
 }
+
+// --- Auth ----------------------------------------------------------------
+
+export const authApi = {
+  register: (input: RegisterInput) =>
+    request("/api/auth/register", AuthResponse, { method: "POST", body: JSON.stringify(input) }),
+  login: (input: LoginInput) =>
+    request("/api/auth/login", AuthResponse, { method: "POST", body: JSON.stringify(input) }),
+  me: (signal?: AbortSignal) => request("/api/auth/me", UserDTO, { signal }),
+};
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
   return request("/health", HealthResponse, { signal });

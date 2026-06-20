@@ -7,7 +7,8 @@ import {
   PushSubscriptionInput,
   VapidKeyDTO,
 } from "@pricepilot/shared";
-import { getDefaultUserId, prisma } from "../db.js";
+import { prisma } from "../db.js";
+import { currentUserId } from "../auth.js";
 import { AppError } from "../errors.js";
 import { toAlertDTO } from "../mappers.js";
 
@@ -18,92 +19,93 @@ export function registerNotificationRoutes(
   fastify: FastifyInstance,
   opts: { vapidPublicKey?: string },
 ): void {
-  const app = fastify.withTypeProvider<ZodTypeProvider>();
+  void fastify.register(async (scope) => {
+    const app = scope.withTypeProvider<ZodTypeProvider>();
+    app.addHook("onRequest", fastify.authenticate);
 
-  // --- Web Push subscriptions ------------------------------------------
+    // --- Web Push subscriptions ----------------------------------------
 
-  app.get("/api/push/key", { schema: { response: { 200: VapidKeyDTO } } }, async () => {
-    if (!opts.vapidPublicKey) throw new AppError(503, "Web Push is not configured");
-    return { publicKey: opts.vapidPublicKey };
+    app.get("/api/push/key", { schema: { response: { 200: VapidKeyDTO } } }, async () => {
+      if (!opts.vapidPublicKey) throw new AppError(503, "Web Push is not configured");
+      return { publicKey: opts.vapidPublicKey };
+    });
+
+    app.post(
+      "/api/push/subscribe",
+      { schema: { body: PushSubscriptionInput, response: { 201: z.object({ ok: z.literal(true) }) } } },
+      async (req, reply) => {
+        const userId = currentUserId(req);
+        await prisma.pushSubscription.upsert({
+          where: { endpoint: req.body.endpoint },
+          update: { p256dh: req.body.keys.p256dh, auth: req.body.keys.auth, userId },
+          create: {
+            userId,
+            endpoint: req.body.endpoint,
+            p256dh: req.body.keys.p256dh,
+            auth: req.body.keys.auth,
+          },
+        });
+        return reply.code(201).send({ ok: true as const });
+      },
+    );
+
+    app.post(
+      "/api/push/unsubscribe",
+      { schema: { body: z.object({ endpoint: z.string().url() }) } },
+      async (req, reply) => {
+        // Scope deletion to the caller's own subscriptions.
+        await prisma.pushSubscription.deleteMany({
+          where: { endpoint: req.body.endpoint, userId: currentUserId(req) },
+        });
+        return reply.code(204).send();
+      },
+    );
+
+    // --- Alerts (per list item) ----------------------------------------
+
+    app.get(
+      "/api/lists/:id/items/:itemId/alerts",
+      { schema: { params: ItemParams, response: { 200: z.array(AlertDTO) } } },
+      async (req) => {
+        await requireItem(req.params.id, req.params.itemId, currentUserId(req));
+        const alerts = await prisma.alert.findMany({
+          where: { listItemId: req.params.itemId },
+          orderBy: { createdAt: "asc" },
+        });
+        return alerts.map(toAlertDTO);
+      },
+    );
+
+    app.post(
+      "/api/lists/:id/items/:itemId/alerts",
+      { schema: { params: ItemParams, body: CreateAlertInput, response: { 201: AlertDTO } } },
+      async (req, reply) => {
+        const userId = currentUserId(req);
+        await requireItem(req.params.id, req.params.itemId, userId);
+        const alert = await prisma.alert.create({
+          data: {
+            userId,
+            listItemId: req.params.itemId,
+            rule: req.body.rule,
+            channel: req.body.channel,
+            threshold: req.body.threshold ?? null,
+          },
+        });
+        return reply.code(201).send(toAlertDTO(alert));
+      },
+    );
+
+    app.delete("/api/alerts/:alertId", { schema: { params: AlertParams } }, async (req, reply) => {
+      const { count } = await prisma.alert.deleteMany({
+        where: { id: req.params.alertId, userId: currentUserId(req) },
+      });
+      if (count === 0) throw new AppError(404, "Alert not found");
+      return reply.code(204).send();
+    });
   });
-
-  app.post(
-    "/api/push/subscribe",
-    { schema: { body: PushSubscriptionInput, response: { 201: z.object({ ok: z.literal(true) }) } } },
-    async (req, reply) => {
-      const userId = await getDefaultUserId();
-      await prisma.pushSubscription.upsert({
-        where: { endpoint: req.body.endpoint },
-        update: { p256dh: req.body.keys.p256dh, auth: req.body.keys.auth, userId },
-        create: {
-          userId,
-          endpoint: req.body.endpoint,
-          p256dh: req.body.keys.p256dh,
-          auth: req.body.keys.auth,
-        },
-      });
-      return reply.code(201).send({ ok: true as const });
-    },
-  );
-
-  app.post(
-    "/api/push/unsubscribe",
-    { schema: { body: z.object({ endpoint: z.string().url() }) } },
-    async (req, reply) => {
-      await prisma.pushSubscription.deleteMany({ where: { endpoint: req.body.endpoint } });
-      return reply.code(204).send();
-    },
-  );
-
-  // --- Alerts (per list item) ------------------------------------------
-
-  app.get(
-    "/api/lists/:id/items/:itemId/alerts",
-    { schema: { params: ItemParams, response: { 200: z.array(AlertDTO) } } },
-    async (req) => {
-      await requireItem(req.params.id, req.params.itemId);
-      const alerts = await prisma.alert.findMany({
-        where: { listItemId: req.params.itemId },
-        orderBy: { createdAt: "asc" },
-      });
-      return alerts.map(toAlertDTO);
-    },
-  );
-
-  app.post(
-    "/api/lists/:id/items/:itemId/alerts",
-    { schema: { params: ItemParams, body: CreateAlertInput, response: { 201: AlertDTO } } },
-    async (req, reply) => {
-      await requireItem(req.params.id, req.params.itemId);
-      const userId = await getDefaultUserId();
-      const alert = await prisma.alert.create({
-        data: {
-          userId,
-          listItemId: req.params.itemId,
-          rule: req.body.rule,
-          channel: req.body.channel,
-          threshold: req.body.threshold ?? null,
-        },
-      });
-      return reply.code(201).send(toAlertDTO(alert));
-    },
-  );
-
-  app.delete(
-    "/api/alerts/:alertId",
-    { schema: { params: AlertParams } },
-    async (req, reply) => {
-      const userId = await getDefaultUserId();
-      const alert = await prisma.alert.findFirst({ where: { id: req.params.alertId, userId } });
-      if (!alert) throw new AppError(404, "Alert not found");
-      await prisma.alert.delete({ where: { id: alert.id } });
-      return reply.code(204).send();
-    },
-  );
 }
 
-async function requireItem(listId: string, itemId: string): Promise<void> {
-  const userId = await getDefaultUserId();
+async function requireItem(listId: string, itemId: string, userId: string): Promise<void> {
   const item = await prisma.listItem.findFirst({
     where: { id: itemId, listId, list: { userId } },
   });
