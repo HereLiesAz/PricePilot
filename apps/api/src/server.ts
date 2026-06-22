@@ -64,8 +64,11 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
     },
   });
 
-  // Auth (register / login / me) — public except `me`.
-  registerAuthRoutes(app);
+  // Auth (register / login / me) — public except `me`; credential routes are
+  // rate-limited per IP.
+  registerAuthRoutes(app, {
+    rateLimit: { max: env.AUTH_RATE_LIMIT_MAX, windowMs: env.AUTH_RATE_WINDOW_MS },
+  });
 
   // List/item CRUD, import, price refresh, and history — backed by the tiered
   // vendor adapters in @pricepilot/scrapers.

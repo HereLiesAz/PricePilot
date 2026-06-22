@@ -16,6 +16,8 @@ describe("GET /health", () => {
         ENABLE_AMAZON_ADAPTER: false,
         ENABLE_PLAYWRIGHT: false,
         JWT_SECRET: "test-secret",
+        AUTH_RATE_LIMIT_MAX: 1000,
+        AUTH_RATE_WINDOW_MS: 60_000,
         RESPECT_ROBOTS: false,
         REQUEST_INTERVAL_MS: 0,
         REQUEST_JITTER_MS: 0,
