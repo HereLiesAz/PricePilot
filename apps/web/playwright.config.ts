@@ -16,7 +16,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: "list",
+  // In CI also emit the HTML report so the workflow can upload it on failure.
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: WEB_URL,
     trace: "on-first-retry",
