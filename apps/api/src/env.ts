@@ -35,6 +35,9 @@ const EnvSchema = z.object({
   ANTHROPIC_MODEL: z.string().optional(),
   // JWT signing secret. Override in production.
   JWT_SECRET: z.string().min(1).default("dev-insecure-secret-change-me"),
+  // Auth endpoint rate limit: max requests per IP per window.
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  AUTH_RATE_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   // Scraping politeness: honor robots.txt and space requests per host.
   RESPECT_ROBOTS: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   REQUEST_INTERVAL_MS: z.coerce.number().int().nonnegative().default(1000),

@@ -1,8 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { AuthResponse, LoginInput, RegisterInput, UserDTO } from "@pricepilot/shared";
 import { prisma } from "../db.js";
 import { AppError } from "../errors.js";
+import { createRateLimiter } from "../rate-limit.js";
 import {
   currentUserId,
   DUMMY_PASSWORD_HASH,
@@ -11,12 +12,26 @@ import {
   verifyPassword,
 } from "../auth.js";
 
-export function registerAuthRoutes(fastify: FastifyInstance): void {
+export interface AuthRouteOptions {
+  rateLimit: { max: number; windowMs: number };
+}
+
+export function registerAuthRoutes(fastify: FastifyInstance, opts: AuthRouteOptions): void {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
+
+  // Throttle credential endpoints per client IP (brute-force / enumeration).
+  const limiter = createRateLimiter(opts.rateLimit.max, opts.rateLimit.windowMs);
+  const rateLimit = async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const { allowed, retryAfterMs } = limiter(req.ip);
+    if (!allowed) {
+      reply.header("retry-after", Math.ceil(retryAfterMs / 1000));
+      throw new AppError(429, "Too many attempts. Please try again later.");
+    }
+  };
 
   app.post(
     "/api/auth/register",
-    { schema: { body: RegisterInput, response: { 201: AuthResponse } } },
+    { preHandler: rateLimit, schema: { body: RegisterInput, response: { 201: AuthResponse } } },
     async (req, reply) => {
       const email = req.body.email.toLowerCase();
       const existing = await prisma.user.findUnique({ where: { email } });
@@ -31,7 +46,7 @@ export function registerAuthRoutes(fastify: FastifyInstance): void {
 
   app.post(
     "/api/auth/login",
-    { schema: { body: LoginInput, response: { 200: AuthResponse } } },
+    { preHandler: rateLimit, schema: { body: LoginInput, response: { 200: AuthResponse } } },
     async (req) => {
       const email = req.body.email.toLowerCase();
       const user = await prisma.user.findUnique({ where: { email } });

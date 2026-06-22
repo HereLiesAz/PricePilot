@@ -108,7 +108,9 @@ The PWA talks only to our own API; all vendor fetching is server-side.
 
 All `/api/*` routes require a `Bearer` JWT except `/health` and `/api/auth/*`.
 Sign up or sign in to get a token (the web app stores it and attaches it
-automatically); data is isolated per user.
+automatically); data is isolated per user. The credential endpoints are
+rate-limited per IP (`AUTH_RATE_LIMIT_MAX` / `AUTH_RATE_WINDOW_MS`), and the web
+app drops an expired token proactively rather than waiting for a 401.
 
 | Method & path                          | Purpose                                            |
 | -------------------------------------- | -------------------------------------------------- |
