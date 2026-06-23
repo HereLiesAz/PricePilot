@@ -6,7 +6,7 @@ import { RateLimiter, isPathAllowed, parseRobots, type RobotsRules } from "./pol
  * limiting / robots.txt handling arrives with the worker in later phases.
  */
 export const USER_AGENT =
-  "PricePilotBot/0.2 (+https://github.com/HereLiesAz/PricePilot; structured-data)";
+  "SailBot/0.2 (+https://github.com/HereLiesAz/Sail; structured-data)";
 
 const FETCH_TIMEOUT_MS = 10_000;
 

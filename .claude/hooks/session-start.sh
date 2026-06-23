@@ -1,5 +1,5 @@
 #!/bin/bash
-# SessionStart hook for PricePilot (pnpm monorepo).
+# SessionStart hook for Sail (pnpm monorepo).
 # Installs workspace dependencies and generates the Prisma client so web
 # sessions land ready to lint, typecheck, build, and test.
 set -euo pipefail
@@ -21,7 +21,7 @@ fi
 # cache is populated and the hook stays idempotent across runs.
 pnpm install
 
-# Generate the Prisma client so typecheck/build/tests resolve @pricepilot/db.
+# Generate the Prisma client so typecheck/build/tests resolve @sail/db.
 pnpm db:generate
 
-echo "PricePilot dependencies installed; run 'pnpm test' / 'pnpm lint' / 'pnpm build'."
+echo "Sail dependencies installed; run 'pnpm test' / 'pnpm lint' / 'pnpm build'."

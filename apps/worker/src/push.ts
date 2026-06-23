@@ -1,6 +1,6 @@
 import webpush from "web-push";
-import type { PushPayload } from "@pricepilot/shared";
-import { prisma } from "@pricepilot/db";
+import type { PushPayload } from "@sail/shared";
+import { prisma } from "@sail/db";
 import type { Env } from "./env.js";
 
 let configured = false;

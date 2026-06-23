@@ -1,4 +1,4 @@
-import type { ExtractedProduct } from "@pricepilot/shared";
+import type { ExtractedProduct } from "@sail/shared";
 
 /**
  * Vendor access tiers (PLAN.md): official API → structured data → headless
@@ -45,7 +45,7 @@ export interface AdapterContext {
   /** Injectable fetch (tests). Defaults to global fetch. */
   fetchImpl?: typeof fetch;
   /**
-   * Optional tier-4 Claude extraction fallback (from @pricepilot/intel), wired
+   * Optional tier-4 Claude extraction fallback (from @sail/intel), wired
    * by the consumer when ANTHROPIC_API_KEY is set. Given cleaned page HTML, it
    * returns a normalized product or null. Kept as a plain function so scrapers
    * stays free of the Anthropic SDK.

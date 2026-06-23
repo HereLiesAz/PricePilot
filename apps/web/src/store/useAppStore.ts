@@ -21,6 +21,6 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
       setTheme: (theme) => set({ theme }),
     }),
-    { name: "pricepilot-ui" },
+    { name: "sail-ui" },
   ),
 );

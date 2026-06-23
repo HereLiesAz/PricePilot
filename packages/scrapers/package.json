@@ -1,5 +1,5 @@
 {
-  "name": "@pricepilot/scrapers",
+  "name": "@sail/scrapers",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pricepilot/shared": "workspace:*",
+    "@sail/shared": "workspace:*",
     "cheerio": "^1.0.0",
     "playwright-core": "^1.49.1"
   },

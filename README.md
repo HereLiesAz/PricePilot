@@ -1,4 +1,4 @@
-# PricePilot
+# Sail
 
 A smart, installable **price watcher / finder**: load shopping & wish lists from
 many vendors and maintain the best-possible price via server-side fetching and an
@@ -29,10 +29,10 @@ apps/
   api/        Fastify 5 + TS + zod + Prisma            (lists/items/history/alerts/push API)
   worker/     BullMQ + Redis watcher                   (adaptive scrape schedule + Web Push)
 packages/
-  shared/     zod schemas + DTOs + shared TS types  (@pricepilot/shared)
-  db/         Prisma schema + migrations + client    (@pricepilot/db, Postgres)
-  scrapers/   tiered vendor-adapter interface + adapters  (@pricepilot/scrapers)
-  intel/      matching, deal scoring, Claude extraction/match  (@pricepilot/intel)
+  shared/     zod schemas + DTOs + shared TS types  (@sail/shared)
+  db/         Prisma schema + migrations + client    (@sail/db, Postgres)
+  scrapers/   tiered vendor-adapter interface + adapters  (@sail/scrapers)
+  intel/      matching, deal scoring, Claude extraction/match  (@sail/intel)
 infra/        docker-compose (Postgres + Redis)
 ```
 
@@ -52,7 +52,7 @@ with an **adaptive cadence** (near-target/volatile → hours; stable → daily;
 failures → exponential backoff). Triggered alerts are delivered as **Web Push**
 notifications (VAPID), so they arrive even when the app is closed.
 
-Run it with `pnpm --filter @pricepilot/worker dev` (needs Redis + Postgres, and
+Run it with `pnpm --filter @sail/worker dev` (needs Redis + Postgres, and
 `VAPID_*` keys for push — `npx web-push generate-vapid-keys`).
 
 ### Vendor adapters (`packages/scrapers`)
@@ -94,7 +94,7 @@ pnpm dev
 - API: <http://localhost:3001> (try <http://localhost:3001/health>)
 
 > First time only: apply the database schema with
-> `pnpm --filter @pricepilot/db db:migrate` (dev) or `db:deploy` (prod/CI).
+> `pnpm --filter @sail/db db:migrate` (dev) or `db:deploy` (prod/CI).
 
 ### End-to-end health check (web ↔ api)
 
@@ -160,7 +160,7 @@ Run from the repo root (fan out across the workspace via `pnpm -r`):
 | `pnpm format`      | Prettier write                                        |
 
 Target a single workspace with `--filter`, e.g.
-`pnpm --filter @pricepilot/api dev`.
+`pnpm --filter @sail/api dev`.
 
 ## Testing
 
@@ -168,7 +168,7 @@ Target a single workspace with `--filter`, e.g.
   tests are pure/network-free. The API list/item integration tests need Postgres
   and are **skipped unless `DATABASE_URL` is set** — start
   `infra/docker-compose.yml`, apply migrations, then
-  `DATABASE_URL=… pnpm --filter @pricepilot/api test`.
+  `DATABASE_URL=… pnpm --filter @sail/api test`.
 
 ## CI & web sessions
 
@@ -184,14 +184,14 @@ Target a single workspace with `--filter`, e.g.
 Container images for the long-running services live in `infra/`:
 
 ```bash
-docker build -f infra/Dockerfile.api    -t pricepilot-api .
-docker build -f infra/Dockerfile.worker -t pricepilot-worker .
+docker build -f infra/Dockerfile.api    -t sail-api .
+docker build -f infra/Dockerfile.worker -t sail-worker .
 ```
 
 Run them against managed Postgres + Redis (Neon/Supabase, Upstash). The API
 image applies pending migrations (`prisma migrate deploy`) on start; both read
 config from env (`DATABASE_URL`, `REDIS_URL`, `CORS_ORIGIN`, `VAPID_*`, vendor
-keys, `ANTHROPIC_API_KEY`). Build the web app (`pnpm --filter @pricepilot/web
+keys, `ANTHROPIC_API_KEY`). Build the web app (`pnpm --filter @sail/web
 build`) and host `apps/web/dist` on any static/CDN host with `VITE_API_URL`
 pointing at the API.
 

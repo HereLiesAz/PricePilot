@@ -1,4 +1,4 @@
-import type { AlertRule } from "@pricepilot/shared";
+import type { AlertRule } from "@sail/shared";
 
 /** A price drop of this fraction below the historical median counts as a deal. */
 export const GOOD_DEAL_FRACTION = 0.85;

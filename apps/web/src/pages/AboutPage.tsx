@@ -13,7 +13,7 @@ export function AboutPage() {
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">About PricePilot</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">About Sail</h1>
         <p className="max-w-2xl text-[var(--color-muted-foreground)]">
           A PWA is browser JavaScript, and browsers block cross-origin requests to
           vendor sites. So price-fetching runs server-side: this app talks only to our
@@ -31,7 +31,7 @@ export function AboutPage() {
           {isError ? (
             <p className="text-sm text-[var(--color-destructive)]">
               Could not reach the API. Start it with{" "}
-              <code>pnpm --filter @pricepilot/api dev</code>.
+              <code>pnpm --filter @sail/api dev</code>.
             </p>
           ) : data ? (
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">

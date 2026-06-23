@@ -1,5 +1,5 @@
 {
-  "name": "@pricepilot/intel",
+  "name": "@sail/intel",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
-    "@pricepilot/shared": "workspace:*",
+    "@sail/shared": "workspace:*",
     "zod": "^3.24.1"
   },
   "devDependencies": {

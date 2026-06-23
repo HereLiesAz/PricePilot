@@ -5,7 +5,7 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
-import { HealthResponse } from "@pricepilot/shared";
+import { HealthResponse } from "@sail/shared";
 import { corsOrigins, loadEnv, type Env } from "./env.js";
 import { adapterContext } from "./adapter-context.js";
 import { registerAuth } from "./auth.js";
@@ -71,7 +71,7 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   });
 
   // List/item CRUD, import, price refresh, and history — backed by the tiered
-  // vendor adapters in @pricepilot/scrapers.
+  // vendor adapters in @sail/scrapers.
   registerListRoutes(app, adapterContext(env));
 
   // Web Push subscriptions + per-item price alerts (delivered by apps/worker).

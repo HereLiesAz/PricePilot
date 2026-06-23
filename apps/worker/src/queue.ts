@@ -1,6 +1,6 @@
 import { Queue, Worker, type ConnectionOptions } from "bullmq";
 
-export const SCRAPE_QUEUE = "pricepilot-scrape";
+export const SCRAPE_QUEUE = "sail-scrape";
 
 /** Job names handled on the scrape queue. */
 export const JOB_TICK = "tick";

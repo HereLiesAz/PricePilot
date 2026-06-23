@@ -6,7 +6,7 @@ import {
   CreateAlertInput,
   PushSubscriptionInput,
   VapidKeyDTO,
-} from "@pricepilot/shared";
+} from "@sail/shared";
 import { prisma } from "../db.js";
 import { currentUserId } from "../auth.js";
 import { AppError } from "../errors.js";

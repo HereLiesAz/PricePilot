@@ -38,16 +38,16 @@ importers:
       '@fastify/jwt':
         specifier: ^9.0.3
         version: 9.1.0
-      '@pricepilot/db':
+      '@sail/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@pricepilot/intel':
+      '@sail/intel':
         specifier: workspace:*
         version: link:../../packages/intel
-      '@pricepilot/scrapers':
+      '@sail/scrapers':
         specifier: workspace:*
         version: link:../../packages/scrapers
-      '@pricepilot/shared':
+      '@sail/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       cheerio:
@@ -84,12 +84,12 @@ importers:
 
   apps/web:
     dependencies:
-      '@pricepilot/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@radix-ui/react-slot':
         specifier: ^1.1.1
         version: 1.2.4(@types/react@19.2.16)(react@19.2.7)
+      '@sail/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@tanstack/react-query':
         specifier: ^5.64.1
         version: 5.101.0(react@19.2.7)
@@ -166,13 +166,13 @@ importers:
 
   apps/worker:
     dependencies:
-      '@pricepilot/db':
+      '@sail/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@pricepilot/scrapers':
+      '@sail/scrapers':
         specifier: workspace:*
         version: link:../../packages/scrapers
-      '@pricepilot/shared':
+      '@sail/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       bullmq:
@@ -231,7 +231,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.68.0
         version: 0.68.0(zod@3.25.76)
-      '@pricepilot/shared':
+      '@sail/shared':
         specifier: workspace:*
         version: link:../shared
       zod:
@@ -250,7 +250,7 @@ importers:
 
   packages/scrapers:
     dependencies:
-      '@pricepilot/shared':
+      '@sail/shared':
         specifier: workspace:*
         version: link:../shared
       cheerio:

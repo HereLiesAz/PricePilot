@@ -1,4 +1,4 @@
-import type { SearchResultDTO } from "@pricepilot/shared";
+import type { SearchResultDTO } from "@sail/shared";
 import type { AdapterContext } from "./types.js";
 import { fetchJson } from "./fetch.js";
 import type { EbayItem } from "./adapters/ebay.js";

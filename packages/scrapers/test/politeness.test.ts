@@ -7,12 +7,12 @@ User-agent: *
 Disallow: /private
 Allow: /private/public
 
-User-agent: PricePilotBot
+User-agent: SailBot
 Disallow: /no-bots
 `;
 
   it("selects the named user-agent group over the wildcard", () => {
-    const rules = parseRobots(txt, "PricePilotBot/0.2");
+    const rules = parseRobots(txt, "SailBot/0.2");
     expect(rules.disallow).toContain("/no-bots");
     expect(rules.disallow).not.toContain("/private"); // that's the * group
   });

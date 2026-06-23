@@ -27,7 +27,7 @@ export function Layout() {
         <div className="mx-auto flex w-full max-w-5xl items-center gap-4 px-4 py-3">
           <div className="flex items-center gap-2 font-semibold">
             <Plane className="size-5 text-[var(--color-primary)]" aria-hidden />
-            PricePilot
+            Sail
           </div>
           <nav className="flex items-center gap-1">
             {navItems.map((item) => (
@@ -76,7 +76,7 @@ export function Layout() {
       </main>
 
       <footer className="border-t border-[var(--color-border)] py-4 text-center text-xs text-[var(--color-muted-foreground)]">
-        PricePilot · Phase 0 scaffold · installable & offline-capable
+        Sail · Phase 0 scaffold · installable & offline-capable
       </footer>
     </div>
   );

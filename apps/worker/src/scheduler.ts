@@ -1,5 +1,5 @@
 import type { Queue } from "bullmq";
-import { prisma } from "@pricepilot/db";
+import { prisma } from "@sail/db";
 import { JOB_SCRAPE_OFFER, type ScrapeOfferData } from "./queue.js";
 
 /**

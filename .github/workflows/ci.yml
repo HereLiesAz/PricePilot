@@ -52,7 +52,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Apply database migrations
-        run: pnpm --filter @pricepilot/db db:deploy
+        run: pnpm --filter @sail/db db:deploy
 
       - name: Lint
         run: pnpm lint
@@ -106,14 +106,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Apply database migrations
-        run: pnpm --filter @pricepilot/db db:deploy
+        run: pnpm --filter @sail/db db:deploy
 
       - name: Install Playwright browser
-        run: pnpm --filter @pricepilot/web exec playwright install --with-deps chromium
+        run: pnpm --filter @sail/web exec playwright install --with-deps chromium
 
       # Playwright boots the API + web dev servers itself (webServer config).
       - name: Run e2e smoke test
-        run: pnpm --filter @pricepilot/web e2e
+        run: pnpm --filter @sail/web e2e
 
       - name: Upload Playwright report
         if: failure()

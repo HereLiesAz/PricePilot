@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { UserDTO } from "@pricepilot/shared";
+import type { UserDTO } from "@sail/shared";
 
 interface AuthState {
   token: string | null;
@@ -21,6 +21,6 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (token, user) => set({ token, user }),
       clear: () => set({ token: null, user: null }),
     }),
-    { name: "pricepilot-auth" },
+    { name: "sail-auth" },
   ),
 );

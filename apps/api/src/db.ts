@@ -1,4 +1,4 @@
-import { prisma } from "@pricepilot/db";
+import { prisma } from "@sail/db";
 
 export { prisma };
 
@@ -7,7 +7,7 @@ export { prisma };
  * everything hangs off a single default user so the core list/item loop works
  * end-to-end. `getDefaultUserId` lazily ensures that user exists.
  */
-const DEFAULT_USER_EMAIL = "demo@pricepilot.local";
+const DEFAULT_USER_EMAIL = "demo@sail.local";
 
 let defaultUserIdCache: string | undefined;
 

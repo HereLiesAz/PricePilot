@@ -12,8 +12,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "PricePilot",
-        short_name: "PricePilot",
+        id: "com.hereliesaz.sail",
+        name: "Sail",
+        short_name: "Sail",
         description:
           "Installable price watcher/finder: track shopping & wish lists and keep the best price.",
         theme_color: "#0f172a",

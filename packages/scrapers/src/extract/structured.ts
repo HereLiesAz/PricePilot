@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { ExtractedProduct } from "@pricepilot/shared";
+import { ExtractedProduct } from "@sail/shared";
 
 /**
  * Structured-data extraction (tier 2 in PLAN.md): read `schema.org/Product` +

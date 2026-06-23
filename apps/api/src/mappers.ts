@@ -5,9 +5,9 @@ import type {
   ListSummaryDTO,
   OfferDTO,
   PriceHistoryDTO,
-} from "@pricepilot/shared";
-import type { Prisma } from "@pricepilot/db";
-import { convertCurrency, dealScore, landedPrice, unitPrice } from "@pricepilot/intel";
+} from "@sail/shared";
+import type { Prisma } from "@sail/db";
+import { convertCurrency, dealScore, landedPrice, unitPrice } from "@sail/intel";
 
 /** Base currency used to compare offers priced in different currencies. */
 const BASE_CURRENCY = "USD";

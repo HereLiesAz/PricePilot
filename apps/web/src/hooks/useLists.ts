@@ -4,7 +4,7 @@ import type {
   CreateAlertInput,
   CreateListInput,
   ImportInput,
-} from "@pricepilot/shared";
+} from "@sail/shared";
 import { listsApi } from "@/lib/api";
 
 const listsKey = ["lists"] as const;

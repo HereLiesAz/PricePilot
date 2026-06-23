@@ -8,7 +8,7 @@ const DATABASE_URL =
 /**
  * End-to-end smoke test config. Playwright boots the API + web dev servers
  * (reusing already-running ones locally) and runs the browser flow. Kept out of
- * the unit suites — run with `pnpm --filter @pricepilot/web e2e`.
+ * the unit suites — run with `pnpm --filter @sail/web e2e`.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "pnpm --filter @pricepilot/api dev",
+      command: "pnpm --filter @sail/api dev",
       url: `${API_URL}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
@@ -39,7 +39,7 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm --filter @pricepilot/web dev",
+      command: "pnpm --filter @sail/web dev",
       url: WEB_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
