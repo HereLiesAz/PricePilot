@@ -65,3 +65,60 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  e2e:
+    name: e2e (Playwright smoke)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pricepilot
+          POSTGRES_PASSWORD: pricepilot
+          POSTGRES_DB: pricepilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pricepilot -d pricepilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://pricepilot:pricepilot@localhost:5432/pricepilot?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply database migrations
+        run: pnpm --filter @pricepilot/db db:deploy
+
+      - name: Install Playwright browser
+        run: pnpm --filter @pricepilot/web exec playwright install --with-deps chromium
+
+      # Playwright boots the API + web dev servers itself (webServer config).
+      - name: Run e2e smoke test
+        run: pnpm --filter @pricepilot/web e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
