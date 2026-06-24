@@ -1,4 +1,4 @@
-import type { ExtractedProduct } from "@pricepilot/shared";
+import type { ExtractedProduct } from "@sail/shared";
 import { ExtractionError, type AdapterContext, type VendorAdapter } from "../types.js";
 import { fetchText } from "../fetch.js";
 import { extractFromHtml } from "../extract/structured.js";

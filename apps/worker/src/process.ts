@@ -1,5 +1,5 @@
-import { extractOffer, ExtractionError, type AdapterContext } from "@pricepilot/scrapers";
-import { prisma } from "@pricepilot/db";
+import { extractOffer, ExtractionError, type AdapterContext } from "@sail/scrapers";
+import { prisma } from "@sail/db";
 import { alertMessage, shouldTriggerAlert } from "./alerts.js";
 import { nextCadenceMinutes } from "./cadence.js";
 import { pushToUser } from "./push.js";
@@ -105,7 +105,7 @@ export async function processOffer(offerId: string, ctx: AdapterContext): Promis
       });
       if (triggered) {
         await pushToUser(item.list.userId, {
-          title: "PricePilot",
+          title: "Sail",
           body: alertMessage(alert.rule, item.product.normalizedTitle, newPrice, extracted.currency),
           url: offer.url,
           rule: alert.rule,

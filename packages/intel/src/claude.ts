@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ExtractedProduct } from "@pricepilot/shared";
+import { ExtractedProduct } from "@sail/shared";
 
 /** Default model for the intelligence layer — latest Sonnet (cost/latency balance). */
 export const DEFAULT_MODEL = "claude-sonnet-4-6";

@@ -40,7 +40,7 @@ export function LoginPage() {
         <CardHeader>
           <div className="flex items-center gap-2 font-semibold">
             <Plane className="size-5 text-[var(--color-primary)]" aria-hidden />
-            PricePilot
+            Sail
           </div>
           <CardTitle className="text-base">
             {mode === "login" ? "Sign in" : "Create an account"}

@@ -1,4 +1,4 @@
-# PricePilot — React PWA Price Watcher / Finder
+# Sail — React PWA Price Watcher / Finder
 
 A smart, installable price watcher/finder: load shopping/wish lists from many
 vendors and maintain the best-possible price via server-side scraping + an

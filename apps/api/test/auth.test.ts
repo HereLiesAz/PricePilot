@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { AuthResponse, UserDTO } from "@pricepilot/shared";
+import { AuthResponse, UserDTO } from "@sail/shared";
 import { buildServer } from "../src/server.js";
 import { prisma } from "../src/db.js";
 import { hashPassword, verifyPassword } from "../src/auth.js";

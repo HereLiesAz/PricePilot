@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
-import { ListDetailDTO, ListSummaryDTO, PriceHistoryDTO } from "@pricepilot/shared";
+import { ListDetailDTO, ListSummaryDTO, PriceHistoryDTO } from "@sail/shared";
 import { buildServer } from "../src/server.js";
 import { prisma } from "../src/db.js";
 

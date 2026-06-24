@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ListPlus, Loader2, Package, Trash2 } from "lucide-react";
-import type { ListType } from "@pricepilot/shared";
+import type { ListType } from "@sail/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

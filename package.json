@@ -1,5 +1,5 @@
 {
-  "name": "pricepilot",
+  "name": "sail",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "test": "pnpm -r test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:generate": "pnpm --filter @pricepilot/db generate"
+    "db:generate": "pnpm --filter @sail/db generate"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "@prisma/client", "@prisma/engines", "prisma"]

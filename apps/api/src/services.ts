@@ -1,5 +1,5 @@
-import type { AddItemInput, ExtractedProduct } from "@pricepilot/shared";
-import { extractOffer, vendorDomain, type AdapterContext } from "@pricepilot/scrapers";
+import type { AddItemInput, ExtractedProduct } from "@sail/shared";
+import { extractOffer, vendorDomain, type AdapterContext } from "@sail/scrapers";
 import {
   findProductMatch,
   makeClaudeMatcher,
@@ -7,7 +7,7 @@ import {
   STRONG_MATCH,
   WEAK_MATCH,
   type ClaudeMatcher,
-} from "@pricepilot/intel";
+} from "@sail/intel";
 import { prisma } from "./db.js";
 
 // Optional Claude match tie-breaker, enabled when an API key is configured.

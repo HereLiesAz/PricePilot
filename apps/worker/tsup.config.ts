@@ -6,7 +6,7 @@ export default defineConfig({
   target: "node22",
   clean: true,
   sourcemap: true,
-  // Bundle the TS-source workspace packages; keep @pricepilot/db (CJS + Prisma)
+  // Bundle the TS-source workspace packages; keep @sail/db (CJS + Prisma)
   // and third-party deps (bullmq, ioredis, web-push, …) external.
-  noExternal: ["@pricepilot/shared", "@pricepilot/scrapers"],
+  noExternal: ["@sail/shared", "@sail/scrapers"],
 });

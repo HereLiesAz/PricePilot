@@ -1,6 +1,6 @@
 import type { FastifyError, FastifyInstance } from "fastify";
 import { hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
-import { ExtractionError } from "@pricepilot/scrapers";
+import { ExtractionError } from "@sail/scrapers";
 
 /** Application-level error carrying an HTTP status code. */
 export class AppError extends Error {

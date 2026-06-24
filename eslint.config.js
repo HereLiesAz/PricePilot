@@ -10,6 +10,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/dev-dist/**",
       "**/generated/**",
+      "**/android/**",
       "**/*.config.js",
       "**/*.config.ts",
       "**/coverage/**",

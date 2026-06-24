@@ -15,7 +15,7 @@ export interface RobotsRules {
  * agent, falling back to `*`). Returns the Allow/Disallow path prefixes.
  */
 export function parseRobots(txt: string, userAgent: string): RobotsRules {
-  const uaToken = userAgent.toLowerCase().split("/")[0]!; // "PricePilotBot/0.2" -> "pricepilotbot"
+  const uaToken = userAgent.toLowerCase().split("/")[0]!; // "SailBot/0.2" -> "sailbot"
   const groups = new Map<string, RobotsRules>();
   let current: string[] = [];
   let sawDirective = false;

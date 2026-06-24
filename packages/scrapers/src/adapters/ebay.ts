@@ -1,4 +1,4 @@
-import { ExtractedProduct } from "@pricepilot/shared";
+import { ExtractedProduct } from "@sail/shared";
 import { ExtractionError, type AdapterContext, type VendorAdapter } from "../types.js";
 import { fetchJson } from "../fetch.js";
 

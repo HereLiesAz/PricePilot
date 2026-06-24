@@ -1,7 +1,7 @@
-// PricePilot — Prisma schema (Phase 0 stub).
+// Sail — Prisma schema (Phase 0 stub).
 //
 // Models mirror the data model in PLAN.md and the zod schemas in
-// `@pricepilot/shared`. This is a stub: relations and indexes are sketched so
+// `@sail/shared`. This is a stub: relations and indexes are sketched so
 // later phases (CRUD, scraping, history, alerts) can build on a stable shape.
 
 generator client {

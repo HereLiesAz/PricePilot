@@ -1,4 +1,4 @@
-import { refreshRates } from "@pricepilot/intel";
+import { refreshRates } from "@sail/intel";
 import { loadEnv } from "./env.js";
 import { buildServer } from "./server.js";
 

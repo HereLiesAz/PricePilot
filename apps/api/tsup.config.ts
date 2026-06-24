@@ -6,9 +6,9 @@ export default defineConfig({
   target: "node22",
   clean: true,
   sourcemap: true,
-  // Bundle the lightweight TS-source workspace packages. Keep @pricepilot/db
+  // Bundle the lightweight TS-source workspace packages. Keep @sail/db
   // external: it compiles to CJS and loads the Prisma client at runtime —
   // bundling Prisma breaks its query-engine resolution. Third-party deps
   // (cheerio, playwright-core) stay external too.
-  noExternal: ["@pricepilot/shared", "@pricepilot/scrapers", "@pricepilot/intel"],
+  noExternal: ["@sail/shared", "@sail/scrapers", "@sail/intel"],
 });

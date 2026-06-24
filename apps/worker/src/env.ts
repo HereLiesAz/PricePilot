@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AdapterContext } from "@pricepilot/scrapers";
+import type { AdapterContext } from "@sail/scrapers";
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -12,7 +12,7 @@ const EnvSchema = z.object({
   // VAPID keys for Web Push (generate with `npx web-push generate-vapid-keys`).
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
-  VAPID_SUBJECT: z.string().default("mailto:alerts@pricepilot.local"),
+  VAPID_SUBJECT: z.string().default("mailto:alerts@sail.local"),
   // Adapter config (mirrors the API).
   ENABLE_AMAZON_ADAPTER: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   ENABLE_PLAYWRIGHT: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),

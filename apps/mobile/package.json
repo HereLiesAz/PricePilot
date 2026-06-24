@@ -1,0 +1,22 @@
+{
+  "name": "@sail/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Capacitor native wrapper for the Sail PWA (com.hereliesaz.sail).",
+  "scripts": {
+    "build": "echo \"@sail/mobile: Android build runs via Gradle in android/ (see README)\"",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"@sail/mobile: no tests\"",
+    "sync": "cap sync android",
+    "add:android": "cap add android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "typescript": "^5.7.3"
+  }
+}

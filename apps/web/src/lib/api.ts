@@ -18,11 +18,11 @@ import {
   type LoginInput,
   type PushSubscriptionInput,
   type RegisterInput,
-} from "@pricepilot/shared";
+} from "@sail/shared";
 import { useAuthStore } from "@/store/useAuthStore";
 
 /**
- * Base URL of the PricePilot API. The PWA talks only to our own API
+ * Base URL of the Sail API. The PWA talks only to our own API
  * (see PLAN.md "core constraint"); vendor fetching happens server-side.
  */
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";

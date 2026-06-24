@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, LineChart, Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
-import type { AlertRule, ListItemDTO } from "@pricepilot/shared";
+import type { AlertRule, ListItemDTO } from "@sail/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

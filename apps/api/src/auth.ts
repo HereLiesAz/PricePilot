@@ -2,8 +2,8 @@ import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fastifyJwt from "@fastify/jwt";
-import type { UserDTO } from "@pricepilot/shared";
-import type { Prisma } from "@pricepilot/db";
+import type { UserDTO } from "@sail/shared";
+import type { Prisma } from "@sail/db";
 import { AppError } from "./errors.js";
 
 // --- Password hashing (async scrypt, no external deps) -------------------

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Shared zod schemas + inferred types for PricePilot.
+ * Shared zod schemas + inferred types for Sail.
  *
  * These mirror the Prisma data model in `packages/db` and the API contract.
  * Phase 0 keeps them intentionally light; later phases extend them as the

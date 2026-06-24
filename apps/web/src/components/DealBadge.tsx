@@ -1,4 +1,4 @@
-import type { DealTier } from "@pricepilot/shared";
+import type { DealTier } from "@sail/shared";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 
 const TIER: Record<DealTier, { label: string; variant: BadgeProps["variant"] }> = {

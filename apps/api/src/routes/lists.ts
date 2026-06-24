@@ -14,8 +14,8 @@ import {
   SearchResultDTO,
   UpdateListInput,
   type ImportFailureDTO,
-} from "@pricepilot/shared";
-import { fetchText, parseWishlist, searchVendors, type AdapterContext } from "@pricepilot/scrapers";
+} from "@sail/shared";
+import { fetchText, parseWishlist, searchVendors, type AdapterContext } from "@sail/scrapers";
 import { prisma } from "../db.js";
 import { currentUserId } from "../auth.js";
 import { AppError } from "../errors.js";

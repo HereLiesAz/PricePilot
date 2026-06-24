@@ -1,5 +1,5 @@
-import type { AdapterContext } from "@pricepilot/scrapers";
-import { makeClaudeExtractor } from "@pricepilot/intel";
+import type { AdapterContext } from "@sail/scrapers";
+import { makeClaudeExtractor } from "@sail/intel";
 import type { Env } from "./env.js";
 
 /** Build the scrapers' AdapterContext from validated environment config. */

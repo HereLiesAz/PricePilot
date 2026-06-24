@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { HealthResponse } from "@pricepilot/shared";
+import { HealthResponse } from "@sail/shared";
 import { buildServer } from "../src/server.js";
 
 describe("GET /health", () => {

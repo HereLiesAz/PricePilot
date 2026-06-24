@@ -1,5 +1,5 @@
 {
-  "name": "@pricepilot/worker",
+  "name": "@sail/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pricepilot/db": "workspace:*",
-    "@pricepilot/scrapers": "workspace:*",
-    "@pricepilot/shared": "workspace:*",
+    "@sail/db": "workspace:*",
+    "@sail/scrapers": "workspace:*",
+    "@sail/shared": "workspace:*",
     "bullmq": "^5.34.0",
     "cheerio": "^1.0.0",
     "playwright-core": "^1.49.1",

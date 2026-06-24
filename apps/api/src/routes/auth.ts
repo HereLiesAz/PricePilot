@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
-import { AuthResponse, LoginInput, RegisterInput, UserDTO } from "@pricepilot/shared";
+import { AuthResponse, LoginInput, RegisterInput, UserDTO } from "@sail/shared";
 import { prisma } from "../db.js";
 import { AppError } from "../errors.js";
 import { createRateLimiter } from "../rate-limit.js";

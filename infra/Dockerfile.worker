@@ -1,5 +1,5 @@
-# PricePilot watcher worker — production image.
-#   docker build -f infra/Dockerfile.worker -t pricepilot-worker .
+# Sail watcher worker — production image.
+#   docker build -f infra/Dockerfile.worker -t sail-worker .
 # Provide DATABASE_URL + REDIS_URL (+ VAPID/vendor keys) at runtime.
 FROM node:22-slim AS build
 WORKDIR /app
@@ -8,7 +8,7 @@ RUN corepack enable && apt-get update && apt-get install -y --no-install-recomme
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm db:generate
-RUN pnpm --filter @pricepilot/worker build
+RUN pnpm --filter @sail/worker build
 
 FROM node:22-slim AS runtime
 WORKDIR /app
